@@ -43,6 +43,9 @@ const CollectionsNavigtaionPage = React.lazy(
 const ServiceSettings = React.lazy(() => import('./pages/ServiceSettingsPage/ServiceSettingsPage'));
 const UserProfile = React.lazy(() => import('./pages/OwnUserProfilePage/OwnUserProfilePage'));
 const EditorPage = React.lazy(() => import('./pages/EditorPage/EditorPage'));
+const EntriesNavigationPage = React.lazy(
+    () => import('./pages/EntriesNavigationPage/EntriesNavigationPage'),
+);
 
 const LandingPage = React.lazy(() => import('./pages/LandingPage/LandingPage'));
 const AuthPage = React.lazy(
@@ -98,6 +101,12 @@ const DatalensPageView = () => {
                 {DL.AUTH_ENABLED && <Route path="/profile" component={UserProfile} />}
 
                 <Route path="/settings" component={ServiceSettings} />
+
+                <Route
+                    exact
+                    path={['/dashboards', '/charts', '/datasets', '/connections', '/favorites']}
+                    component={EntriesNavigationPage}
+                />
 
                 <Route path={['/collections']} component={CollectionsNavigtaionPage} />
 

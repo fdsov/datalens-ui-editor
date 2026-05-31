@@ -1,0 +1,14 @@
+.dl-entries-navigation-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    padding: 20px 0 0;
+
+    // NavigationEntries root must stretch so the virtualized List (AutoSizer)
+    // gets a non-zero measured height and actually renders rows.
+    & > .dl-core-navigation__entries {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+}

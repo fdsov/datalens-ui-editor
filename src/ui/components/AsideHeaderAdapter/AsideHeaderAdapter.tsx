@@ -1,6 +1,15 @@
 import React from 'react';
 
-import {CircleQuestion, Gear, Sliders} from '@gravity-ui/icons';
+import {
+    ChartColumn,
+    CircleQuestion,
+    CirclesIntersection,
+    Database,
+    Gear,
+    LayoutCells,
+    Sliders,
+    Star,
+} from '@gravity-ui/icons';
 import type {AsideHeaderProps, MenuItem, TopAlertProps} from '@gravity-ui/navigation';
 import {AsideHeader, FooterItem} from '@gravity-ui/navigation';
 import type {IconData} from '@gravity-ui/uikit';
@@ -39,6 +48,9 @@ const i18n = I18n.keyset('component.aside-header.view');
 
 const COLLECTIONS_PATH = '/collections';
 const SERVICE_SETTINGS_PATH = '/settings';
+const CONNECTIONS_PATH = '/connections';
+const DATASETS_PATH = '/datasets';
+const DASHBOARDS_PATH = '/dashboards';
 
 const FOOTER_ITEM_DEFAULT_SIZE = 18;
 const PROMO_SITE_DOMAIN = 'https://datalens.ru/opensource';
@@ -159,9 +171,61 @@ export const AsideHeaderAdapter = ({
                 title: i18n('label_collections'),
                 icon: iconCollection,
                 iconSize: 16,
-                current: pathname.includes(COLLECTIONS_PATH),
+                current:
+                    pathname === '/' ||
+                    (pathname.includes(COLLECTIONS_PATH) && !pathname.includes(CONNECTIONS_PATH)),
                 itemWrapper: (params, makeItem) => {
                     return getLinkWrapper(makeItem(params), COLLECTIONS_PATH);
+                },
+            },
+            {
+                id: 'favorites',
+                title: 'Избранное',
+                icon: Star,
+                iconSize: ITEMS_NAVIGATION_DEFAULT_SIZE,
+                current: pathname.startsWith('/favorites'),
+                itemWrapper: (params, makeItem) => {
+                    return getLinkWrapper(makeItem(params), '/favorites');
+                },
+            },
+            {
+                id: 'connections',
+                title: 'Подключения',
+                icon: Database,
+                iconSize: ITEMS_NAVIGATION_DEFAULT_SIZE,
+                current: pathname.startsWith(CONNECTIONS_PATH),
+                itemWrapper: (params, makeItem) => {
+                    return getLinkWrapper(makeItem(params), CONNECTIONS_PATH);
+                },
+            },
+            {
+                id: 'datasets',
+                title: 'Датасеты',
+                icon: CirclesIntersection,
+                iconSize: ITEMS_NAVIGATION_DEFAULT_SIZE,
+                current: pathname.startsWith(DATASETS_PATH),
+                itemWrapper: (params, makeItem) => {
+                    return getLinkWrapper(makeItem(params), DATASETS_PATH);
+                },
+            },
+            {
+                id: 'charts',
+                title: 'Чарты',
+                icon: ChartColumn,
+                iconSize: ITEMS_NAVIGATION_DEFAULT_SIZE,
+                current: pathname.startsWith('/charts'),
+                itemWrapper: (params, makeItem) => {
+                    return getLinkWrapper(makeItem(params), '/charts');
+                },
+            },
+            {
+                id: 'dashboards',
+                title: 'Дашборды',
+                icon: LayoutCells,
+                iconSize: ITEMS_NAVIGATION_DEFAULT_SIZE,
+                current: pathname.startsWith(DASHBOARDS_PATH),
+                itemWrapper: (params, makeItem) => {
+                    return getLinkWrapper(makeItem(params), DASHBOARDS_PATH);
                 },
             },
             ...(customMenuItems || []),
