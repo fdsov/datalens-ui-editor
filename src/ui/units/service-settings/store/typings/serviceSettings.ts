@@ -1,0 +1,18 @@
+import type {CreateUserResponse, ListUser} from 'shared/schema/auth/types/users';
+
+export type ServiceSettingsState = {
+    getUsersList: {
+        isInitialLoading: boolean;
+        isLoadingMore: boolean;
+        users: ListUser[];
+        nextPageToken: string | null;
+        error: Error | null;
+        loadedBeforeFilter: ListUser[] | null;
+        nextPageTokenBeforeFilter: string | null;
+    };
+    createUser: {
+        isLoading: boolean;
+        data: CreateUserResponse | null;
+        error: Error | null;
+    };
+};

@@ -1,0 +1,14 @@
+.chart-info {
+    &__icon {
+        margin-left: 8px;
+        color: var(--g-color-base-danger-heavy);
+    }
+
+    &__tooltip-content {
+        padding: var(--g-spacing-4);
+
+        &_hidden {
+            display: none;
+        }
+    }
+}

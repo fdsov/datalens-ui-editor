@@ -1,0 +1,20 @@
+@import '../../../../styles/variables.scss';
+@import '../../styles/variables.scss';
+
+.create-user-page {
+    min-height: 100vh;
+
+    &__content {
+        max-width: $pageMaxWidth;
+        padding: $settingsPagePadding;
+        margin: 0 auto;
+    }
+
+    &__breadcrumbs {
+        flex-grow: 1;
+    }
+
+    &__breadcrumbs-item {
+        height: 100%;
+    }
+}

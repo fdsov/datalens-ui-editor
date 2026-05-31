@@ -1,0 +1,23 @@
+import type {
+    GetEntryResponse,
+    GetSharedEntryResponse,
+    RestrictedSharedEntry,
+} from '../schema/us/types/entries';
+import type {EntryMetaFields} from '../schema/us/types/fields';
+
+export type MinimumEntryFields = Pick<EntryMetaFields, 'entryId' | 'key' | 'type' | 'scope'>;
+
+export type EntryPublicAuthor = {text?: string; link?: string};
+
+export type WorkbookId = string | null;
+export type CollectionId = string | null;
+
+export type TransferIdMapping = Record<string, string>;
+
+export type TransferNotification = {
+    level: 'info' | 'warning' | 'critical';
+    code: string;
+    details?: object;
+};
+
+export type WorkbookEntry = GetEntryResponse | GetSharedEntryResponse | RestrictedSharedEntry;

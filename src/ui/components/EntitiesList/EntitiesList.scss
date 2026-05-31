@@ -1,0 +1,17 @@
+@import '~@gravity-ui/uikit/styles/mixins';
+
+.related-entities-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+
+    &__title {
+        @include text-subheader-1;
+        margin-bottom: var(--g-spacing-1);
+    }
+
+    &__row {
+        height: 34px;
+        padding-left: 0;
+    }
+}

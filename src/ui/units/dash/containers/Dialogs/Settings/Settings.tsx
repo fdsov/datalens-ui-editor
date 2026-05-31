@@ -1,0 +1,349 @@
+import React from 'react';
+
+import {Dialog} from '@gravity-ui/uikit';
+import block from 'bem-cn-lite';
+import ChartKit from 'libs/DatalensChartkit';
+import {batch, useDispatch, useSelector} from 'react-redux';
+import {Feature} from 'shared';
+import {DashboardDialogSettingsQa} from 'shared/constants/qa/dash';
+import {
+    DEFAULT_DASH_MARGINS,
+    OLD_DEFAULT_WIDGET_BORDER_RADIUS,
+} from 'ui/components/DashKit/constants';
+import {registry} from 'ui/registry';
+import {openDialog} from 'ui/store/actions/dialog';
+import {isEnabledFeature} from 'ui/utils/isEnabledFeature';
+
+import type {DatalensGlobalState} from '../../../../..';
+import {i18n} from '../../../../../../i18n';
+import type {DashSettings} from '../../../../../../shared';
+import {DashLoadPriority} from '../../../../../../shared';
+import {DIALOG_ENTRY_DESCRIPTION} from '../../../../../components/DialogEntryDescription';
+import EntryDialogues from '../../../../../components/EntryDialogues/EntryDialogues';
+import {DIALOG_TYPE} from '../../../../../constants/dialogs';
+import {toggleTableOfContent, updateAllDashSettings} from '../../../store/actions/dashTyped';
+import {closeDialog} from '../../../store/actions/dialogs/actions';
+import {
+    selectDashAccessDescription,
+    selectDashSupportDescription,
+    selectEntryId,
+    selectIsDialogVisible,
+    selectSettings,
+} from '../../../store/selectors/dashTypedSelectors';
+
+import {AutoRefresh} from './components/AutoRefresh';
+import {Display} from './components/Display';
+import {OtherSettings} from './components/OtherSettings';
+import {Params} from './components/Params';
+import {useGlobalParams} from './useGlobalParams';
+
+import './Settings.scss';
+
+const b = block('dialog-settings');
+
+const Settings = () => {
+    const dispatch = useDispatch();
+
+    const isNew = !useSelector(selectEntryId);
+    const settings = useSelector(selectSettings);
+    const visible = useSelector((state: DatalensGlobalState) =>
+        selectIsDialogVisible(state, DIALOG_TYPE.SETTINGS),
+    );
+    const accessDesc = useSelector(selectDashAccessDescription);
+    const supportDesc = useSelector(selectDashSupportDescription);
+
+    const [maxConcurrentRequests, setMaxConcurrentRequests] = React.useState(
+        settings.maxConcurrentRequests || -1, // YCSelect dictionary string key fix
+    );
+    const [loadPriority, setLoadPriority] = React.useState(
+        settings.loadPriority || DashLoadPriority.Charts,
+    );
+
+    const [autoupdateInterval, setAutoupdateInterval] = React.useState(
+        settings.autoupdateInterval || '',
+    );
+    const [autoupdate, setAutoupdate] = React.useState(
+        Boolean(Number(settings.autoupdateInterval)),
+    );
+    const [silentLoading, setSilentLoading] = React.useState(settings.silentLoading || false);
+    const [dependentSelectors, setDependentSelectors] = React.useState(
+        settings.dependentSelectors || false,
+    );
+    const [loadOnlyVisibleCharts, setLoadOnlyVisibleCharts] = React.useState(
+        settings.loadOnlyVisibleCharts ?? true,
+    );
+    const {
+        globalParams,
+        isGlobalParamsError,
+        localParams,
+        handleEditParamTitle,
+        handleEditParamValue,
+        handleRemoveParam,
+        handleRemoveAllParams,
+        handleValidateParamTitle,
+    } = useGlobalParams({
+        initialParams: settings.globalParams || {},
+    });
+    const [hideTabs, setHideTabs] = React.useState(settings.hideTabs);
+    const [hideDashTitle, setHideTitle] = React.useState(Boolean(settings.hideDashTitle));
+    const [expandTOC, setExpandTOC] = React.useState(settings.expandTOC);
+    const [accessDescription, setAccessDesc] = React.useState(accessDesc);
+    const [supportDescription, setSupportDesc] = React.useState(supportDesc);
+    const [margins, setMargins] = React.useState(settings.margins || DEFAULT_DASH_MARGINS);
+    const [internalMarginsEnabled, setInternalMarginsEnabled] = React.useState(
+        settings.widgetsSettings?.internalMarginsEnabled ?? true,
+    );
+    const [borderRadius, setBorderRadius] = React.useState(
+        settings.widgetsSettings?.borderRadius ??
+            (!isNew && isEnabledFeature(Feature.EnableNewDashSettings)
+                ? OLD_DEFAULT_WIDGET_BORDER_RADIUS
+                : undefined),
+    );
+    const [backgroundColorSettings, setBackgroundColorSettings] = React.useState(
+        settings.backgroundSettings?.color || undefined,
+    );
+    const [widgetsBackgroundColorSettings, setWidgetsBackgroundColorSettings] = React.useState(
+        settings.widgetsSettings?.backgroundSettings?.color || undefined,
+    );
+    const [otherSettinsState, setOtherSettingsState] = React.useState<Partial<DashSettings>>({});
+
+    const entryDialoguesRef = React.useRef<EntryDialogues>(null);
+    const [isDescriptionOpened, setIsDescriptionOpened] = React.useState(false);
+
+    const {getMinAutoupdateInterval} = registry.dash.functions.getAll();
+
+    const isValidAutoupdateInterval = () => {
+        let result = true;
+        if (autoupdate && Number(autoupdateInterval) < getMinAutoupdateInterval()) {
+            setAutoupdateInterval(getMinAutoupdateInterval());
+            result = false;
+        }
+        if (!autoupdate && silentLoading) {
+            setSilentLoading(false);
+            result = false;
+        }
+        return result;
+    };
+
+    const handleMaxConcurrentRequestsSelectChange = (text: string[]) => {
+        setMaxConcurrentRequests(parseInt(text[0], 10));
+    };
+
+    const handleLoadPrioritySelectChange = (value: DashLoadPriority) => {
+        setLoadPriority(value);
+    };
+
+    const handleAutoUpdateIntervalInputChange = (text: string) => {
+        const value = text === '' ? text : parseInt(text, 10);
+
+        setAutoupdateInterval(value);
+    };
+
+    const handleUpdateLoadOnlyVisibleCharts = () =>
+        setLoadOnlyVisibleCharts(!loadOnlyVisibleCharts);
+
+    const handleButtonApplyClick = () => {
+        if (!isValidAutoupdateInterval()) {
+            return;
+        }
+
+        if (
+            settings.dependentSelectors ||
+            !dependentSelectors ||
+            confirm(i18n('dash.settings-dialog.edit', 'context_dependent-selectors'))
+        ) {
+            const newSettings: DashSettings = {
+                ...settings,
+                autoupdateInterval:
+                    (typeof autoupdateInterval === 'string'
+                        ? parseInt(autoupdateInterval)
+                        : autoupdateInterval) || null,
+                maxConcurrentRequests: maxConcurrentRequests > 0 ? maxConcurrentRequests : null,
+                loadOnlyVisibleCharts,
+                silentLoading,
+                dependentSelectors,
+                globalParams,
+                hideTabs,
+                hideDashTitle,
+                expandTOC,
+                loadPriority,
+                widgetsSettings: {
+                    ...settings.widgetsSettings,
+                    borderRadius,
+                    internalMarginsEnabled,
+                    backgroundSettings: widgetsBackgroundColorSettings
+                        ? {
+                              color: widgetsBackgroundColorSettings,
+                          }
+                        : undefined,
+                },
+                backgroundSettings: backgroundColorSettings
+                    ? {
+                          color: backgroundColorSettings,
+                      }
+                    : undefined,
+                ...otherSettinsState,
+            };
+
+            if (
+                margins &&
+                margins[0] !== DEFAULT_DASH_MARGINS[0] &&
+                margins[1] !== DEFAULT_DASH_MARGINS[1]
+            ) {
+                newSettings.margins = margins;
+            } else {
+                // Cleaning default values
+                delete newSettings.margins;
+            }
+
+            batch(() => {
+                dispatch(toggleTableOfContent(Boolean(expandTOC)));
+                dispatch(
+                    updateAllDashSettings({
+                        settings: newSettings,
+                        accessDescription,
+                        supportDescription,
+                    }),
+                );
+            });
+
+            ChartKit?.setDataProviderSettings?.({
+                loadPriority,
+                maxConcurrentRequests: maxConcurrentRequests > 0 ? maxConcurrentRequests : null,
+            });
+
+            dispatch(closeDialog());
+        }
+    };
+
+    const handleButtonSetupAccessDescription = React.useCallback(() => {
+        setIsDescriptionOpened(true);
+        dispatch(
+            openDialog({
+                id: DIALOG_ENTRY_DESCRIPTION,
+                props: {
+                    title: i18n('dash.settings-dialog.edit', 'label_access-description'),
+                    description: accessDescription || '',
+                    canEdit: true,
+                    isEditMode: true,
+                    onApply: (text: string) => setAccessDesc(text),
+                    onCloseCallback: () => setIsDescriptionOpened(false),
+                },
+            }),
+        );
+    }, [dispatch, accessDescription]);
+
+    const handleButtonSetupSupportDescription = React.useCallback(() => {
+        setIsDescriptionOpened(true);
+        dispatch(
+            openDialog({
+                id: DIALOG_ENTRY_DESCRIPTION,
+                props: {
+                    title: i18n('dash.settings-dialog.edit', 'label_support-description'),
+                    description: supportDescription || '',
+                    canEdit: true,
+                    isEditMode: true,
+                    onApply: (text: string) => setSupportDesc(text),
+                    onCloseCallback: () => setIsDescriptionOpened(false),
+                },
+            }),
+        );
+    }, [dispatch, supportDescription]);
+
+    const handleMarginsChange = React.useCallback((margins: number | [number, number]) => {
+        if (Array.isArray(margins)) {
+            setMargins(margins);
+        } else {
+            setMargins([margins, margins]);
+        }
+    }, []);
+
+    const showDependentSelectors = !settings.dependentSelectors;
+
+    return settings ? (
+        <Dialog
+            open={visible}
+            onClose={() => dispatch(closeDialog())}
+            disableEscapeKeyDown={true}
+            disableHeightTransition={true}
+            qa={DashboardDialogSettingsQa.DialogRoot}
+            disableOutsideClick={isDescriptionOpened}
+        >
+            <Dialog.Header caption={i18n('dash.settings-dialog.edit', 'label_settings')} />
+            <Dialog.Body className={b()}>
+                <AutoRefresh
+                    autoUpdateValue={autoupdate}
+                    onChangeAutoUpdate={() => {
+                        const newValue = !autoupdate;
+                        setAutoupdate(newValue);
+                        setSilentLoading(false);
+                        setAutoupdateInterval(newValue ? getMinAutoupdateInterval() : '');
+                    }}
+                    intervalDisabled={!autoupdate}
+                    intervalValue={String(autoupdateInterval)}
+                    onUpdateInterval={handleAutoUpdateIntervalInputChange}
+                    onBlurInterval={() => isValidAutoupdateInterval()}
+                    silentLoadingValue={silentLoading}
+                    silentLoadingDisabled={!autoupdate}
+                    onChangeSilentLoading={() => setSilentLoading(!silentLoading)}
+                />
+                <Display
+                    margins={margins}
+                    onChangeMargins={handleMarginsChange}
+                    internalMarginsEnabled={internalMarginsEnabled}
+                    onChangeInternalMarginsEnabled={setInternalMarginsEnabled}
+                    hideTabsValue={hideTabs}
+                    onChangeHideTabs={() => setHideTabs(!hideTabs)}
+                    hideDashTitleValue={hideDashTitle}
+                    onChangeHideDashTitle={() => setHideTitle(!hideDashTitle)}
+                    expandTOCValue={expandTOC}
+                    onChangeExpandTOC={() => setExpandTOC(!expandTOC)}
+                    borderRadius={borderRadius}
+                    onChangeBorderRadius={setBorderRadius}
+                    backgroundSettings={backgroundColorSettings}
+                    onChangeBackgroundSettings={setBackgroundColorSettings}
+                    widgetsBackgroundSettings={widgetsBackgroundColorSettings}
+                    onChangeWidgetsBackgroundSettings={setWidgetsBackgroundColorSettings}
+                />
+                <OtherSettings
+                    showDependentSelectors={showDependentSelectors}
+                    dependentSelectorsValue={dependentSelectors}
+                    onChangeDependentSelectors={() => setDependentSelectors(!dependentSelectors)}
+                    maxConcurrentRequestsValue={maxConcurrentRequests}
+                    onUpdateMaxConcurrentRequestsValue={handleMaxConcurrentRequestsSelectChange}
+                    loadPriorityValue={loadPriority}
+                    onUpdateLoadPriorityValue={handleLoadPrioritySelectChange}
+                    onAccessDescriptionClick={handleButtonSetupAccessDescription}
+                    onSupportDescriptionClick={handleButtonSetupSupportDescription}
+                    loadOnlyVisibleCharts={loadOnlyVisibleCharts}
+                    onUpdateLoadOnlyVisibleCharts={handleUpdateLoadOnlyVisibleCharts}
+                    initialSettings={settings}
+                    settings={otherSettinsState}
+                    onChange={setOtherSettingsState}
+                />
+                <Params
+                    paramsData={localParams}
+                    onEditParamTitle={handleEditParamTitle}
+                    onEditParamValue={handleEditParamValue}
+                    onRemoveParam={handleRemoveParam}
+                    onRemoveAllParams={handleRemoveAllParams}
+                    validateParamTitle={handleValidateParamTitle}
+                />
+                <EntryDialogues ref={entryDialoguesRef} />
+            </Dialog.Body>
+            <Dialog.Footer
+                textButtonApply={i18n('dash.settings-dialog.edit', 'button_save')}
+                onClickButtonApply={handleButtonApplyClick}
+                textButtonCancel={i18n('dash.settings-dialog.edit', 'button_cancel')}
+                onClickButtonCancel={() => dispatch(closeDialog())}
+                propsButtonApply={{
+                    disabled: isGlobalParamsError,
+                    qa: DashboardDialogSettingsQa.ApplyButton,
+                }}
+                propsButtonCancel={{qa: DashboardDialogSettingsQa.CancelButton}}
+            />
+        </Dialog>
+    ) : null;
+};
+
+export default Settings;

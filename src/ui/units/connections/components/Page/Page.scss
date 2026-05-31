@@ -1,0 +1,15 @@
+// Temporary crutch while showing the old static connections
+
+#root.with-hidden-entry-panel {
+    .conn-app > .action-panel {
+        display: none;
+    }
+}
+
+.conn-page {
+    &__action-panel {
+        &_readonly {
+            background-color: var(--g-color-base-misc-medium);
+        }
+    }
+}

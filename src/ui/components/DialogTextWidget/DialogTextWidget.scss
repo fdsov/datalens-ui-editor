@@ -1,0 +1,22 @@
+@import '~@gravity-ui/uikit/styles/mixins';
+@import '../WysiwygEditor/mixins.scss';
+
+.dialog-text {
+    position: relative;
+
+    @include yfm-editor(586px, calc(90vh - 270px));
+
+    &__hint {
+        @include text-body-1();
+        color: var(--g-color-text-secondary);
+        margin-top: 10px;
+    }
+
+    &__row {
+        margin-bottom: var(--g-spacing-2);
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+}

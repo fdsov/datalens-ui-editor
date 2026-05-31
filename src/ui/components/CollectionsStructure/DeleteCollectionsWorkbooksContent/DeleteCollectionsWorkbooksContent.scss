@@ -1,0 +1,31 @@
+.dl-collections-structure-delete-collections-workbooks-dialog-content {
+    &__header {
+        font-weight: 500;
+    }
+
+    &__list {
+        padding: 10px 0;
+    }
+
+    &__title {
+        margin-bottom: 8px;
+        margin-left: 8px;
+    }
+
+    &__item {
+        display: flex;
+    }
+
+    &__icon {
+        min-width: 20px;
+    }
+
+    &__entry-icon {
+        height: 20px;
+        width: 20px;
+        .custom-color-box {
+            height: 20px;
+            width: 20px;
+        }
+    }
+}

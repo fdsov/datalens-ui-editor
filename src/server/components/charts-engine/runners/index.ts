@@ -1,0 +1,82 @@
+import type {Request} from '@gravity-ui/expresskit';
+import type {AppContext} from '@gravity-ui/nodekit';
+
+import type {ChartsEngine} from '..';
+import type {WorkbookId} from '../../../../shared';
+import {ControlType, EDITOR_CHART_NODE} from '../../../../shared';
+import type {ProcessorParams} from '../components/processor';
+import type {ReducedResolvedConfig, ResolvedConfig} from '../components/storage/types';
+
+import {RUNNER_NAME} from './constants';
+import {runControl} from './control';
+import {runEditor} from './editor';
+import {runWizardChart} from './wizard';
+
+export type RunnerLocals = {
+    subrequestHeaders: Record<string, string>;
+    editMode: boolean;
+    login: string | null;
+    iamToken: string | null;
+};
+
+export type Runner = {
+    name: string;
+    trigger: Set<string>;
+    handler: RunnerHandler;
+    safeConfig?: boolean;
+};
+
+export type RunnerHandlerResult = {
+    status: number;
+    payload: unknown;
+};
+
+export type RunnerHandler = (
+    ctx: AppContext,
+    {chartsEngine, req, config, configResolving}: RunnerHandlerProps,
+) => RunnerHandlerResult | Promise<RunnerHandlerResult>;
+
+export type RunnerHandlerProps = {
+    chartsEngine: ChartsEngine;
+    req: Request;
+    runnerLocals: RunnerLocals;
+    config: ResolvedConfig | ReducedResolvedConfig;
+    configResolving: number;
+    workbookId?: WorkbookId;
+    isWizard?: boolean;
+    forbiddenFields?: ProcessorParams['forbiddenFields'];
+    secureConfig?: ProcessorParams['secureConfig'];
+};
+
+export function getDefaultRunners() {
+    const runners: Runner[] = [
+        {
+            name: RUNNER_NAME.WIZARD,
+            trigger: new Set([
+                'graph_wizard_node',
+                'table_wizard_node',
+                'ymap_wizard_node',
+                'metric_wizard_node',
+                'markup_wizard_node',
+                'timeseries_wizard_node',
+                'd3_wizard_node',
+            ]),
+            safeConfig: true,
+            handler: runWizardChart,
+        },
+        {
+            // for all types of controls except editor control
+            name: RUNNER_NAME.DASH_CONTROLS,
+            trigger: new Set([ControlType.Dash]),
+            safeConfig: true,
+            handler: runControl,
+        },
+        {
+            name: RUNNER_NAME.EDITOR,
+            trigger: new Set([...Object.keys(EDITOR_CHART_NODE), 'module']),
+            handler: runEditor,
+        },
+    ];
+
+    return runners;
+}

@@ -1,0 +1,26 @@
+.preview {
+    display: flex;
+    flex: 1;
+    height: 100%;
+    --dl-chart-modelling-settings-top: 0;
+
+    .datalens-chartkit-error {
+        padding: 20px;
+    }
+
+    &_mobile {
+        flex-direction: column;
+        position: relative;
+
+        .dl-widget__container .dl-widget__chart-header {
+            top: -40px;
+            right: 8px;
+        }
+    }
+
+    &__loader {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+    }
+}
