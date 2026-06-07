@@ -1,71 +1,20 @@
 import {I18n} from 'i18n';
-import {Feature} from 'shared';
 import type {ResourceType} from 'ui/registry/units/common/types/components/IamAccessDialog';
-import {isEnabledFeature} from 'ui/utils/isEnabledFeature';
 
 import type {SubjectClaims, SubjectDetails} from '../../../shared/schema/extensions/types';
 import {ClaimsSubjectType, SubjectType} from '../../../shared/schema/extensions/types';
-import {DL, SYSTEM_GROUP_IDS} from '../../constants/common';
+import {SYSTEM_GROUP_IDS} from '../../constants/common';
 
-export const getResourceRoles = (type: ResourceType) => {
+export const getResourceRoles = (_type: ResourceType) => {
     const i18n = I18n.keyset('component.iam-access-dialog');
 
-    const iamResources = DL.IAM_RESOURCES;
-    const isSharedEntryEnable = isEnabledFeature(Feature.EnableSharedEntries);
-    const result: {
-        title: string;
-        value: string;
-    }[] = [];
-
-    if (iamResources) {
-        const resource = iamResources[type];
-        const roles = resource?.roles ?? {};
-        if (isSharedEntryEnable) {
-            if ('limitedEntryBindingCreator' in roles && roles.limitedEntryBindingCreator) {
-                result.push({
-                    title: i18n('role-limited-entry-binding-creator'),
-                    value: roles.limitedEntryBindingCreator,
-                });
-            }
-
-            if ('entryBindingCreator' in roles && roles.entryBindingCreator) {
-                result.push({
-                    title: i18n('role-entry-binding-creator'),
-                    value: roles.entryBindingCreator,
-                });
-            }
-        }
-
-        if (roles.limitedViewer) {
-            result.push({
-                title: i18n('role_limited-viewer'),
-                value: roles.limitedViewer,
-            });
-        }
-
-        if (roles.viewer) {
-            result.push({
-                title: i18n('role_viewer'),
-                value: roles.viewer,
-            });
-        }
-
-        if (roles.editor) {
-            result.push({
-                title: i18n('role_editor'),
-                value: roles.editor,
-            });
-        }
-
-        if (roles.admin) {
-            result.push({
-                title: i18n('role_admin'),
-                value: roles.admin,
-            });
-        }
-    }
-
-    return result;
+    // OSS native-acl: IAM_RESOURCES is empty here, so provide the workbook roles directly.
+    // The role `value` is the roleId; the us access-bindings endpoint maps it by suffix.
+    return [
+        {title: i18n('role_viewer'), value: 'datalens.workbooks.viewer'},
+        {title: i18n('role_editor'), value: 'datalens.workbooks.editor'},
+        {title: i18n('role_admin'), value: 'datalens.workbooks.admin'},
+    ];
 };
 
 export const filterByUser = (searchString: string) => {

@@ -64,7 +64,7 @@ import type {UseSubjectsListId} from './types/functions/useSubjectsListId';
 
 export const commonFunctionsMap = {
     [EXAMPLE_FUNCTION]: makeFunctionTemplate<(arg: number) => string>(),
-    useSubjectsListId: makeFunctionTemplate<() => UseSubjectsListId>(),
+    useSubjectsListId: (): UseSubjectsListId => ({type: 'organizationId', id: 'common'}),
     openDialogOrganizationInvite: makeFunctionTemplate<() => OpenDialogOrganizationInvite>(),
     openDialogOrganizationInviteUsers:
         makeFunctionTemplate<() => OpenDialogOrganizationInviteUsers>(),
@@ -163,8 +163,7 @@ export const commonFunctionsMap = {
         >(),
     checkCreateEntryButtonVisibility: makeFunctionTemplate<CheckCreateEntryButtonVisibility>(),
     getBasicActionPanelItems: makeFunctionTemplate<GetBasicActionPanelItems>(),
-    getListMembersFilter:
-        makeFunctionTemplate<({search, tabId}: {search: string; tabId: string}) => string | null>(),
+    getListMembersFilter: (_args: {search: string; tabId: string}): string | null => null,
     getTopLevelEntryScopes: makeFunctionTemplate<() => EntryScope[]>(),
     getAllEntryScopes: makeFunctionTemplate<() => EntryScope[]>(),
     getScopeTypeIcon: makeFunctionTemplate<(scope: EntryScope) => string | null>(),
