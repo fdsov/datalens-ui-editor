@@ -13,6 +13,18 @@ import type {AclSubjectSuggestProps} from '../../registry/units/common/types/com
 const subjectLabel = (s: {name?: string; preferredUsername?: string; sub?: string}) =>
     s?.name || s?.preferredUsername || s?.sub || '';
 
+// the "everyone" wildcard subject — sub '*' (UserAccount subType so getAccessSubjectType
+// doesn't throw); the us access-bindings controller maps id '*' to subject_type='all'.
+const ALL_USERS_SUBJECT = {
+    sub: '*',
+    subType: ClaimsSubjectType.UserAccount,
+    name: 'Все пользователи',
+    preferredUsername: 'Все пользователи',
+    email: '',
+    givenName: '',
+    familyName: '',
+};
+
 export const AclSubjectImpl = ({subjectClaims}: AclSubjectProps) => (
     <div>{subjectLabel(subjectClaims)}</div>
 );
@@ -47,6 +59,13 @@ export const AclSubjectSuggestImpl = ({fetchSubjects, onSubjectChange}: AclSubje
                 onUpdate={setSearch}
             />
             <div style={{marginTop: 8, maxHeight: 240, overflowY: 'auto'}}>
+                {/* "Все пользователи" — wildcard subject (sub '*'); grants access to everyone */}
+                <div
+                    onClick={() => onSubjectChange(ALL_USERS_SUBJECT as any)}
+                    style={{padding: '6px 8px', cursor: 'pointer', borderRadius: 4, fontWeight: 500}}
+                >
+                    {ALL_USERS_SUBJECT.name}
+                </div>
                 {items.map((s) => (
                     <div
                         key={s.sub}
@@ -56,9 +75,6 @@ export const AclSubjectSuggestImpl = ({fetchSubjects, onSubjectChange}: AclSubje
                         {subjectLabel(s)}
                     </div>
                 ))}
-                {items.length === 0 && (
-                    <div style={{padding: 8, opacity: 0.6}}>Нет пользователей</div>
-                )}
             </div>
         </div>
     );
