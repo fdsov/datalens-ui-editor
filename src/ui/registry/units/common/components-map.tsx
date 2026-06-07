@@ -1,4 +1,6 @@
 import {RangeInputPicker} from 'ui/components/common/RangeInputPicker';
+import {IamAccessDialogComponent as RealIamAccessDialogComponent} from 'ui/components/IamAccessDialog/IamAccessDialogComponent';
+import {AclSubjectImpl, AclSubjectSuggestImpl} from 'ui/components/IamAccessDialog/oss-acl-impl';
 import type {ShareButtonProps} from 'ui/units/dash/components/ShareButton/ShareButton';
 
 import {Datepicker} from '../../../components/common/Datepicker/Datepicker';
@@ -11,8 +13,6 @@ import {Example} from './components/Example/Example';
 import {EXAMPLE_COMPONENT} from './constants/components';
 import type {AccessRightsProps} from './types/components/AccessRights';
 import type {AccessRightsUrlOpenProps} from './types/components/AccessRightsUrlOpen';
-import type {AclSubjectProps} from './types/components/AclSubject';
-import type {AclSubjectSuggestProps} from './types/components/AclSubjectSuggest';
 import type {ActionPanelEntrySelectProps} from './types/components/ActionPanelEntrySelect';
 import type {ButtonFavoriteProps} from './types/components/ButtonFavorite';
 import type {DialogAddParticipantsProps} from './types/components/DialogAddParticipants';
@@ -22,7 +22,6 @@ import type {DialogRelatedEntitiesRadioHintProps} from './types/components/Dialo
 import type {DialogShareProps} from './types/components/DialogShare';
 import type {DownloadScreenshotProps} from './types/components/DownloadScreenshot';
 import type {EntryBreadcrumbsProps} from './types/components/EntryBreadcrumbs';
-import type {IamAccessDialogProps} from './types/components/IamAccessDialog';
 import type {MarkdownControlProps} from './types/components/MarkdownControl';
 import type {MarkupShareLinkProps} from './types/components/MarkupShareLink';
 import type {MarkupUserInfoProps} from './types/components/MarkupUserInfo';
@@ -45,7 +44,7 @@ export const commonComponentsMap = {
     AccessRights: makeDefaultEmpty<AccessRightsProps>(),
     DialogAddParticipants: makeDefaultEmpty<DialogAddParticipantsProps>(),
     AccessRightsUrlOpenComponent: makeDefaultEmpty<AccessRightsUrlOpenProps>(),
-    IamAccessDialogComponent: makeDefaultEmpty<IamAccessDialogProps>(),
+    IamAccessDialogComponent: RealIamAccessDialogComponent,
     UserAvatarById: makeDefaultEmpty<UserAvatarByIdProps>(),
     Datepicker,
     DatepickerControl: makeDefaultEmpty<DatepickerControlProps>(),
@@ -57,8 +56,8 @@ export const commonComponentsMap = {
     MarkupUserInfo: makeDefaultEmpty<MarkupUserInfoProps>(),
     MarkdownControl: makeDefaultEmpty<MarkdownControlProps>(),
     Footer: makeDefaultEmpty(),
-    AclSubject: makeDefaultEmpty<AclSubjectProps>(),
-    AclSubjectSuggest: makeDefaultEmpty<AclSubjectSuggestProps>(),
+    AclSubject: AclSubjectImpl,
+    AclSubjectSuggest: AclSubjectSuggestImpl,
     DialogShare: makeDefaultEmpty<DialogShareProps>(),
     ShareButton: makeDefaultEmpty<ShareButtonProps>(),
     DialogImageWidgetLinkHint: makeDefaultEmpty<DialogImageWidgetLinkHintProps>(),
