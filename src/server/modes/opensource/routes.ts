@@ -2,11 +2,18 @@ import type {AppMiddleware, Request, Response} from '@gravity-ui/expresskit';
 import {AuthPolicy} from '@gravity-ui/expresskit';
 import type {AppContext} from '@gravity-ui/nodekit';
 
-import {AppEnvironment} from '../../../shared';
+import {
+    AppEnvironment,
+    EMBEDDED_API_PREFIX,
+    EMBEDDED_CHART_PATH,
+    EMBEDDED_DASH_PATH,
+    EMBEDDED_ENTRY_API_PATH,
+} from '../../../shared';
 import {getAuthArgs} from '../../../shared/schema/gateway-utils';
 import {appEnv, isApiMode, isChartsMode, isDatalensMode, isFullMode} from '../../app-env';
 import {getAuthRoutes} from '../../components/auth/routes';
 import type {ChartsEngine} from '../../components/charts-engine';
+import {embedServiceAuth} from '../../components/embed/service-auth';
 import {ping} from '../../controllers/ping';
 import {workbooksTransferController} from '../../controllers/workbook-transfer';
 import {getConnectorIconsMiddleware} from '../../middlewares';
@@ -122,7 +129,25 @@ function getDataLensRoutes({
         afterAuth,
     };
 
+    // Embed pages are plain SPA pages: the embedding token arrives in the hash fragment,
+    // so the server can neither read nor validate it during rendering.
+    const embedUi: Omit<ExtendedAppRouteDescription, 'handler' | 'route'> = {
+        beforeAuth,
+        afterAuth,
+        ui: true,
+        authPolicy: AuthPolicy.disabled,
+    };
+
     const routes: Record<string, ExtendedAppRouteDescription> = {
+        getEmbeddedDash: getConfiguredRoute('dl-main', {
+            ...embedUi,
+            route: `GET ${EMBEDDED_DASH_PATH}`,
+        }),
+        getEmbeddedChart: getConfiguredRoute('dl-main', {
+            ...embedUi,
+            route: `GET ${EMBEDDED_CHART_PATH}`,
+        }),
+
         getConnections: getConfiguredRoute('navigation', {...ui, route: 'GET /connections'}),
         getDatasets: getConfiguredRoute('navigation', {...ui, route: 'GET /datasets'}),
         getWidgets: getConfiguredRoute('navigation', {...ui, route: 'GET /widgets'}),
@@ -199,6 +224,21 @@ function getChartsRoutes({
         return {};
     }
 
+    // Embedded objects are authorized by the embedding token only, so they live on
+    // separate paths (window.DL.apiPrefix === EMBEDDED_API_PREFIX on embed pages)
+    // and never share a handler with the session authorized `/api/run`.
+    const embedApi: Omit<ExtendedAppRouteDescription, 'handler' | 'route'> = {
+        beforeAuth,
+        afterAuth,
+        authPolicy: AuthPolicy.disabled,
+        disableCsrf: true,
+    };
+
+    const embedData: Omit<ExtendedAppRouteDescription, 'handler' | 'route'> = {
+        ...embedApi,
+        afterAuth: [...afterAuth, embedServiceAuth],
+    };
+
     const routes: Record<string, ExtendedAppRouteDescription> = {
         // Routes from Charts Engine
         postApiRun: {
@@ -211,6 +251,23 @@ function getChartsRoutes({
             beforeAuth,
             afterAuth,
             route: 'POST /api/export',
+            handler: chartsEngine.controllers.export,
+        },
+
+        // Routes for embedded objects
+        getApiEmbeddedEntry: {
+            ...embedApi,
+            route: `GET ${EMBEDDED_ENTRY_API_PATH}`,
+            handler: chartsEngine.controllers.embeddedEntry,
+        },
+        postApiEmbedsRun: {
+            ...embedData,
+            route: `POST ${EMBEDDED_API_PREFIX}/run`,
+            handler: chartsEngine.controllers.embeds,
+        },
+        postApiEmbedsExport: {
+            ...embedData,
+            route: `POST ${EMBEDDED_API_PREFIX}/export`,
             handler: chartsEngine.controllers.export,
         },
 

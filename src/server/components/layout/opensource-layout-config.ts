@@ -7,11 +7,34 @@ import type {
     DLUser,
     TenantSettings,
 } from '../../../shared';
-import {FALLBACK_LANGUAGES, Language, USER_SETTINGS_KEY} from '../../../shared';
+import {
+    EMBEDDED_API_PREFIX,
+    EMBEDDED_CHART_PATH,
+    EMBEDDED_DASH_PATH,
+    FALLBACK_LANGUAGES,
+    Language,
+    USER_SETTINGS_KEY,
+} from '../../../shared';
 import type {AppLayoutSettings, GetLayoutConfig} from '../../types/app-layout';
 import {addTranslationsScript} from '../../utils/language';
 
 import {getChartkitLayoutSettings, getPlatform} from './utils';
+
+/**
+ * Embedded pages are detected by the route path: the embedding token itself lives in the
+ * URL hash fragment and is not available on the server.
+ */
+function getEmbedLayoutData(path: string): Pick<DLGlobalData, 'embed' | 'apiPrefix'> | undefined {
+    if (path.startsWith(EMBEDDED_CHART_PATH)) {
+        return {embed: {mode: 'chart'}, apiPrefix: EMBEDDED_API_PREFIX};
+    }
+
+    if (path.startsWith(EMBEDDED_DASH_PATH)) {
+        return {embed: true, apiPrefix: EMBEDDED_API_PREFIX};
+    }
+
+    return undefined;
+}
 
 export const getOpensourceLayoutConfig: GetLayoutConfig = async (args) => {
     const {req, res, settingsId} = args;
@@ -95,6 +118,7 @@ export const getOpensourceLayoutConfig: GetLayoutConfig = async (args) => {
         authCookieName: req.ctx.config.authCookieName,
         tenantSettings,
         ...appLayoutSettings.DL,
+        ...getEmbedLayoutData(req.path),
     };
     const renderConfig: RenderParams<{DL: DLGlobalData}> = {
         nonce: req.nonce,
