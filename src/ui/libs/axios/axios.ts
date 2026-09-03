@@ -46,7 +46,9 @@ axiosRetry(client, {
         axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error),
 });
 
-if (DL.AUTH_ENABLED) {
+// An embedded page has no user session at all: refreshing tokens there always fails with 401 and
+// pops the "you have logged out in another tab" dialog over the dashboard.
+if (DL.AUTH_ENABLED && !DL.EMBED) {
     initBeforeRequestInterceptor(client, refreshAuthToken);
 }
 

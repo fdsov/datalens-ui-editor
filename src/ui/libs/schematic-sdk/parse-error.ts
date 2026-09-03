@@ -85,10 +85,12 @@ export const handleRequestError: SdkConfig['handleRequestError'] = (errorRespons
         };
     }
 
+    // An embedded viewer has no session to reset, so the "log in again" dialog is meaningless there.
     if (
         ([ErrorCode.AuthNeedReset, ErrorCode.NeedReset] as string[]).includes(parsedError.code) &&
         dispatch &&
-        !needResetDialogShown
+        !needResetDialogShown &&
+        !DL.EMBED
     ) {
         needResetDialogShown = true;
 

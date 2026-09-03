@@ -21,5 +21,11 @@ export const EMBEDDED_CHART_PATH = '/embeds/chart';
  */
 export const EMBEDDED_API_PREFIX = '/api/embeds';
 
-/** BFF route that resolves an embedded dash entry by the embedding token. */
-export const EMBEDDED_ENTRY_API_PATH = '/api/embedded-entry';
+/**
+ * BFF route that resolves an embedded dash entry by the embedding token.
+ *
+ * Must stay under EMBEDDED_API_PREFIX: the two-segment SPA route `GET /:entryId/:widgetId` is
+ * registered before the charts routes, so a two-segment `/api/<something>` path is swallowed by it
+ * and returns the SPA html instead of reaching this handler.
+ */
+export const EMBEDDED_ENTRY_API_PATH = `${EMBEDDED_API_PREFIX}/entry`;
