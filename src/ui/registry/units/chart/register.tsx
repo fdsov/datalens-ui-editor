@@ -10,6 +10,7 @@ import {
 } from '../../../libs/DatalensChartkit/menu/helpers';
 import {getChartkitMenuByType} from '../../../libs/DatalensChartkit/modules/menu/menu';
 import {registry} from '../../../registry';
+import {getSecureEmbeddingToken} from '../../../utils/embedded';
 
 export const registerChartPlugins = () => {
     registry.chart.functions.register({
@@ -20,5 +21,6 @@ export const registerChartPlugins = () => {
         getChartkitMenuByType,
         getChartkitPlugins,
         getChartkitType,
+        getSecureEmbeddingToken,
     });
 };

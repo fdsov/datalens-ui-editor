@@ -9,6 +9,7 @@ import {closeDialog as closeDialogConfirm, openDialogConfirm} from 'store/action
 import type {DatalensGlobalState} from 'ui';
 import {MarkdownProvider, URL_QUERY, Utils} from 'ui';
 import type {ConnectionsReduxDispatch} from 'ui/units/connections/store';
+import {isEmbeddedEntry} from 'ui/utils/embedded';
 import type {ManualError} from 'ui/utils/errors/manual';
 import {isEnabledFeature} from 'ui/utils/isEnabledFeature';
 import {getLoginOrIdFromLockedError, isEntryIsLockedError} from 'utils/errors/errorByCode';
@@ -21,6 +22,7 @@ import {getSdk} from '../../../../../libs/schematic-sdk';
 import {registry} from '../../../../../registry';
 import {showToast} from '../../../../../store/actions/toaster';
 import {DashErrorCode, Mode} from '../../../modules/constants';
+import {fetchEmbeddedDashEntry} from '../../../modules/embedded-dash';
 import {collectDashStats} from '../../../modules/pushStats';
 import type {DashState} from '../../typings/dash';
 import {getFakeDashEntry} from '../../utils';
@@ -215,6 +217,59 @@ export const setEditMode = (successCallback = () => {}, failCallback = () => {})
 };
 
 /**
+ * Embedded dashboard flow: the entry is resolved by the embedding token on the BFF side,
+ * there is no entryId in the url, no revisions, no permissions and no saved states.
+ */
+async function loadEmbeddedDash({
+    dispatch,
+    searchParams,
+    history,
+}: {
+    dispatch: DashDispatch;
+    searchParams: URLSearchParams;
+    history: History;
+}) {
+    const entry = await fetchEmbeddedDashEntry();
+
+    let data = entry.data;
+    let convertedEntryData;
+    if (DashSchemeConverter.isUpdateNeeded(entry.data)) {
+        dispatch({type: SET_STATE, payload: {mode: Mode.Updating}});
+        data = DashSchemeConverter.update(entry.data);
+        convertedEntryData = data;
+    }
+
+    if (!data.tabs) {
+        throw new Error(NOT_FOUND_ERROR_TEXT);
+    }
+
+    const {tabId, widgetsCurrentTab} = getCurrentTab({searchParams, data, history});
+
+    await MarkdownProvider.init(data);
+
+    if (data.settings) {
+        applyDataProviderChartSettings({data});
+    }
+
+    dispatch({
+        type: SET_STATE,
+        payload: {
+            permissions: {read: true, edit: false, admin: false, execute: true},
+            mode: Mode.View,
+            entry,
+            data,
+            convertedEntryData,
+            tabId,
+            widgetsCurrentTab,
+            hashStates: {},
+            stateHashId: null,
+            navigationPath: null,
+            annotation: null,
+        },
+    });
+}
+
+/**
  * Loading dash data: dash config from us, dash state from us, and in parallel all datasets schemas, which is used in dash items
  * @param location
  * @param history
@@ -241,6 +296,11 @@ export const load = ({
             const {pathname, search} = location;
 
             const searchParams = new URLSearchParams(search);
+
+            if (isEmbeddedEntry()) {
+                await loadEmbeddedDash({dispatch, searchParams, history});
+                return;
+            }
 
             const {extractEntryId} = registry.common.functions.getAll();
 

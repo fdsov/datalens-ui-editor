@@ -10,6 +10,7 @@ import DashAndWizardQLPages, {
     dashAndWizardQLRoutes,
 } from './pages/DashAndWizardQLPages/DashAndWizardQLPages';
 import {locationChangeHandler} from './helpers';
+import {EMBEDDED_CHART_PATH, EMBEDDED_DASH_PATH} from 'shared';
 import {isEmbeddedMode, isTvMode} from '../utils/embedded';
 import {reducerRegistry} from '../store';
 import {AsideHeaderAdapter} from 'ui/components/AsideHeaderAdapter/AsideHeaderAdapter';
@@ -51,6 +52,14 @@ const LandingPage = React.lazy(() => import('./pages/LandingPage/LandingPage'));
 const AuthPage = React.lazy(
     () => import(/* webpackChunkName: "auth-page" */ './pages/AuthPage/AuthPage'),
 );
+const DashPage = React.lazy(() => import('./pages/DashPage/DashPage'));
+const EmbeddedChartPage = React.lazy(
+    () =>
+        import(
+            /* webpackChunkName: "embedded-chart-page" */
+            './pages/EmbeddedChartPage/EmbeddedChartPage'
+        ),
+);
 
 const DatalensPageView = () => {
     useClearReloadedQuery();
@@ -76,6 +85,10 @@ const DatalensPageView = () => {
     return (
         <React.Suspense fallback={<FallbackPage />}>
             <Switch>
+                {/* Embedded objects: entry is resolved by the embedding token, not by url */}
+                <Route path={EMBEDDED_DASH_PATH} component={DashPage} />
+                <Route path={EMBEDDED_CHART_PATH} component={EmbeddedChartPage} />
+
                 {DL.AUTH_ENABLED && <Route path="/auth" component={AuthPage} />}
 
                 <Route
