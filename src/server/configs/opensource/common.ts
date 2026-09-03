@@ -6,6 +6,7 @@ import {
     CSP_HEADER,
     CSP_REPORT_TO_HEADER,
     DL_CONTEXT_HEADER,
+    DL_EMBED_TOKEN_HEADER,
     Language,
     PALETTE_ID,
     isTrueArg,
@@ -213,8 +214,9 @@ export default {
     },
     defaultColorPaletteId: PALETTE_ID.DEFAULT_20,
 
-    appSensitiveKeys: [CSP_HEADER, CSP_REPORT_TO_HEADER],
-    appSensitiveHeaders: [CSP_HEADER, CSP_REPORT_TO_HEADER],
+    // embedding token must never appear in logs
+    appSensitiveKeys: [CSP_HEADER, CSP_REPORT_TO_HEADER, DL_EMBED_TOKEN_HEADER],
+    appSensitiveHeaders: [CSP_HEADER, CSP_REPORT_TO_HEADER, DL_EMBED_TOKEN_HEADER],
 
     // auth
     isAuthEnabled: isTrueArg(process.env.AUTH_ENABLED),
