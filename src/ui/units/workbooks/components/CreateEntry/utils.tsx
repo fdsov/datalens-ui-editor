@@ -113,7 +113,9 @@ export const useCreateEntryOptions = ({
                         text: (
                             <div className={b('dropdown-item')}>
                                 <EntityIcon type="editor" />
-                                <div className={b('dropdown-text')}>{i18n('menu_editor-chart')}</div>
+                                <div className={b('dropdown-text')}>
+                                    {i18n('menu_editor-chart')}
+                                </div>
                             </div>
                         ),
                     },
