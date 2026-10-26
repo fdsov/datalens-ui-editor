@@ -136,12 +136,7 @@ export const getChartApiContext = (args: GetChartApiContextArgs): ChartApiContex
         };
     }
 
-    if (
-        name === 'Controls' ||
-        name === 'Prepare' ||
-        name === 'UI' ||
-        name === 'JavaScript'
-    ) {
+    if (name === 'Controls' || name === 'Prepare' || name === 'UI' || name === 'JavaScript') {
         api.getLoadedData = () => data || {};
         api.getLoadedDataStats = () => dataStats || {};
         api.setDataSourceInfo = (dataSourceKey, info) => {

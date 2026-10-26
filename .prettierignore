@@ -4,3 +4,4 @@ tests/dist
 tests/artifacts
 *.yaml
 build/
+ce-dist/

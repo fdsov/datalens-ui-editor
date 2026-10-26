@@ -5,6 +5,10 @@ on:
     branches-ignore:
       - 'weblate-**'
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   statoscope:
     runs-on: ubuntu-24.04
@@ -25,18 +29,34 @@ jobs:
           name: main-stats
           path: ./
         continue-on-error: true
+      # Fresh forks or expired artifacts may have no saved baseline. Build the PR base
+      # instead of silently skipping the size comparison or comparing against itself.
+      - name: Check out baseline when no artifact is available
+        if: hashFiles('reference.json') == ''
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: statoscope-base
+      - name: Build missing baseline
+        if: hashFiles('reference.json') == ''
+        working-directory: statoscope-base
+        run: |
+          npm ci
+          npm run build:analyze
+          cp dist/public/build/stats.json ../reference.json
       - name: Validate
         run: npm run statoscope:validate-diff
       - name: Query stats
         if: "github.event_name == 'pull_request'"
         run: cat ./scripts/ci/statoscope-comment.jora | npx --no-install @statoscope/cli query --input input.json --input reference.json > result.json
       - name: Save result.json and pr
-        if: always()
+        if: always() && hashFiles('result.json') != ''
         run: |
+          mkdir -p ./report/statoscope
           cp result.json ./report/statoscope
           echo "${{ github.event.pull_request.number }}" > ./report/statoscope/report-pr
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && hashFiles('result.json') != ''
         with:
           name: statoscope-report
           path: ./report/statoscope/

@@ -51,7 +51,10 @@
     "test:e2e:docker:logs": "cd ./tests && docker --log-level error compose -f ./docker-compose.e2e.yml logs --no-color",
     "test:e2e:docker:logs-nginx": "cd ./tests && docker --log-level error compose -f ./docker-compose.e2e.nginx.yml logs --no-color",
     "statoscope:validate-diff": "statoscope validate --input input.json --reference reference.json",
-    "statoscope:validate": "statoscope validate --input ./dist/public/build/stats.json"
+    "statoscope:validate": "statoscope validate --input ./dist/public/build/stats.json",
+    "predev": "npm run build:ce-bundle",
+    "prebuild": "npm run build:ce-bundle",
+    "pretest:jest": "npm run build:ce-bundle"
   },
   "repository": {
     "type": "git",
@@ -245,7 +248,8 @@
     "url": "^0.11.1",
     "utility-types": "^3.10.0",
     "uuid": "^9.0.1",
-    "yup": "^1.6.1"
+    "yup": "^1.6.1",
+    "esbuild": "0.25.5"
   },
   "overrides": {
     "react": "^17.0.2",

@@ -12,6 +12,7 @@ import {EDITOR_TYPE_CONFIG_TABS, Feature} from '../../../../../../shared';
 import type {ChartBuilder, ChartBuilderResult} from '../types';
 
 import {resolveDependencies} from './dependencies';
+import {initializeSandboxContext} from './initialize-context';
 import type {ModulesSandboxExecuteResult} from './isolated-modules-sandbox';
 import {Sandbox} from './sandbox';
 
@@ -79,32 +80,30 @@ export const getIsolatedSandboxChartBuilder = async (
     const context = isolate.createContextSync();
 
     const qlConnectionTypeMap = getQLConnectionTypeMap();
-    context.evalSync(
-        `
-         // I do not know why, but this is not exists in V8 Isolate.
-         Math.E = ${Math.E};
-         const __modules = {};
-         let __params;
-         let __usedParams;
-         let __runtimeMetadata = {userParamsOverride: undefined};
-         let __features = JSON.parse('${JSON.stringify(serverFeatures)}');
-         let __palettes = JSON.parse('${JSON.stringify(palettes)}');
-         let __qlConnectionTypeMap = JSON.parse('${JSON.stringify(qlConnectionTypeMap)}');
-         let __links = JSON.parse('${JSON.stringify(links)}');
-    `,
-    );
+    initializeSandboxContext(context, {
+        __features: serverFeatures,
+        __palettes: palettes,
+        __qlConnectionTypeMap: qlConnectionTypeMap,
+        __links: links,
+    });
 
     const features = {noJsonFn: serverFeatures[Feature.NoJsonFn]};
 
     return {
         dispose: () => {
             context.release();
+            isolate.dispose();
         },
         buildShared: async () => {
             shared = JSON.parse(config.data.shared || '{}');
         },
 
         buildModules: async ({subrequestHeaders, ctx, onModuleBuild}) => {
+            if (!bundledLibriesCode) {
+                throw new Error(
+                    'Chart Editor libraries are missing. Run npm run build:ce-bundle before starting the server.',
+                );
+            }
             const resolvedModules = await resolveDependencies({
                 nativeModules,
                 config,

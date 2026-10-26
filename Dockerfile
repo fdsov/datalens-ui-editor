@@ -30,9 +30,6 @@ COPY app-builder.config.ts tsconfig.json /opt/app/
 
 RUN npm run build && chown app /opt/app/dist/run
 
-# Chart Editor bundled libraries (libs/dataset/v2 etc.) loaded into the isolated-vm sandbox
-RUN npm run build:ce-bundle
-
 # runtime base image for both platform
 FROM ubuntu:${UBUNTU_VERSION} AS base-stage
 

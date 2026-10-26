@@ -21,12 +21,7 @@ const ROUTE_TO_PLACE: Record<string, string> = {
     favorites: PLACE.FAVORITES,
 };
 
-const onEntryClick = (entry: {
-    entryId?: string;
-    scope?: string;
-    type?: string;
-    key?: string;
-}) => {
+const onEntryClick = (entry: {entryId?: string; scope?: string; type?: string; key?: string}) => {
     if (entry.scope === 'folder') {
         return;
     }
