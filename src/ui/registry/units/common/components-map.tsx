@@ -1,6 +1,7 @@
-import {RangeInputPicker} from 'ui/components/common/RangeInputPicker';
-import {IamAccessDialogComponent as RealIamAccessDialogComponent} from 'ui/components/IamAccessDialog/IamAccessDialogComponent';
+import React from 'react';
+
 import {AclSubjectImpl, AclSubjectSuggestImpl} from 'ui/components/IamAccessDialog/oss-acl-impl';
+import {RangeInputPicker} from 'ui/components/common/RangeInputPicker';
 import type {ShareButtonProps} from 'ui/units/dash/components/ShareButton/ShareButton';
 
 import {Datepicker} from '../../../components/common/Datepicker/Datepicker';
@@ -22,6 +23,7 @@ import type {DialogRelatedEntitiesRadioHintProps} from './types/components/Dialo
 import type {DialogShareProps} from './types/components/DialogShare';
 import type {DownloadScreenshotProps} from './types/components/DownloadScreenshot';
 import type {EntryBreadcrumbsProps} from './types/components/EntryBreadcrumbs';
+import type {IamAccessDialogProps} from './types/components/IamAccessDialog';
 import type {MarkdownControlProps} from './types/components/MarkdownControl';
 import type {MarkupShareLinkProps} from './types/components/MarkupShareLink';
 import type {MarkupUserInfoProps} from './types/components/MarkupUserInfo';
@@ -31,6 +33,18 @@ import type {PlaceholderIllustrationImageProps} from './types/components/Placeho
 import type {ReportButtonProps} from './types/components/ReportButton';
 import type {UserAvatarByIdProps} from './types/components/UserAvatarById';
 import type {YfmWrapperProps} from './types/components/YfmWrapper';
+
+// Defer the dialog's store/SDK imports until render to avoid a registry -> DL -> registry cycle.
+const LazyIamAccessDialog = React.lazy(() =>
+    import('ui/components/IamAccessDialog/IamAccessDialogComponent').then((module) => ({
+        default: module.IamAccessDialogComponent,
+    })),
+);
+const RealIamAccessDialogComponent = (props: IamAccessDialogProps) => (
+    <React.Suspense fallback={null}>
+        <LazyIamAccessDialog {...props} />
+    </React.Suspense>
+);
 
 export const commonComponentsMap = {
     [EXAMPLE_COMPONENT]: Example,

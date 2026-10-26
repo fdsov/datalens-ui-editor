@@ -62,7 +62,12 @@ export const AclSubjectSuggestImpl = ({fetchSubjects, onSubjectChange}: AclSubje
                 {/* "Все пользователи" — wildcard subject (sub '*'); grants access to everyone */}
                 <div
                     onClick={() => onSubjectChange(ALL_USERS_SUBJECT as any)}
-                    style={{padding: '6px 8px', cursor: 'pointer', borderRadius: 4, fontWeight: 500}}
+                    style={{
+                        padding: '6px 8px',
+                        cursor: 'pointer',
+                        borderRadius: 4,
+                        fontWeight: 500,
+                    }}
                 >
                     {ALL_USERS_SUBJECT.name}
                 </div>

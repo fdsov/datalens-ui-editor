@@ -144,9 +144,12 @@ async function updateSession(ctx: AppContext): Promise<ServiceSession> {
     if (session?.cookieHeader) {
         try {
             return await requestSession(ctx, 'refresh');
-        } catch (error) {
-            // Do not leak credentials/tokens: only the error itself is logged
-            ctx.logError('EMBED_SERVICE_AUTH_REFRESH_FAILED', error);
+        } catch {
+            // Axios errors contain request cookies and credentials; never log the original error.
+            ctx.logError(
+                'EMBED_SERVICE_AUTH_REFRESH_FAILED',
+                new EmbedServiceAuthError('Service session refresh failed'),
+            );
         }
     }
 
@@ -202,7 +205,10 @@ export async function embedServiceAuth(req: Request, res: Response, next: NextFu
 
         next();
     } catch (error) {
-        req.ctx.logError('EMBED_SERVICE_AUTH_FAILED', error);
+        req.ctx.logError(
+            'EMBED_SERVICE_AUTH_FAILED',
+            new EmbedServiceAuthError('Service authorization failed'),
+        );
 
         const isConfigError =
             error instanceof EmbedServiceAuthError && !isEmbedServiceAuthConfigured();
