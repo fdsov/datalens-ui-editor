@@ -16,6 +16,8 @@ permissions:
 
 jobs:
   run:
+    # These jobs require the upstream private runners and service credentials.
+    if: github.repository_owner == 'datalens-tech'
     name: e2e-tests
     runs-on:
       - self-hosted
@@ -129,7 +131,7 @@ jobs:
   report:
     name: e2e-tests-report
     needs: run
-    if: always()
+    if: always() && github.repository_owner == 'datalens-tech'
     runs-on:
       - self-hosted
       - linux

@@ -27,6 +27,8 @@ env:
 
 jobs:
   run:
+    # These jobs require the upstream private runners and service credentials.
+    if: github.repository_owner == 'datalens-tech'
     name: e2e-tests-farm
     runs-on:
       - self-hosted
@@ -163,7 +165,7 @@ jobs:
   report:
     name: e2e-tests-farm-report
     needs: run
-    if: always()
+    if: always() && github.repository_owner == 'datalens-tech'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4

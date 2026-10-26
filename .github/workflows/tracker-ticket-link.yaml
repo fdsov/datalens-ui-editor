@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   run:
+    # These jobs require the upstream private runners and service credentials.
+    if: github.repository_owner == 'datalens-tech'
     name: tracker-ticket-link
     runs-on:
       - self-hosted
