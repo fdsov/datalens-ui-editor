@@ -244,7 +244,7 @@ function processEntry(
     return null;
 }
 
-async function filterParams({
+export async function filterParams({
     params = {},
     embeddingInfo,
     ctx,

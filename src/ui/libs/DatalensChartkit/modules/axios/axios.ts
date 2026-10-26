@@ -62,7 +62,8 @@ client.interceptors.response.use(
     },
 );
 
-if (DL.AUTH_ENABLED) {
+// See the comment in ui/libs/axios/axios.ts: no session exists on an embedded page.
+if (DL.AUTH_ENABLED && !DL.EMBED) {
     initBeforeRequestInterceptor(client, refreshAuthToken);
 }
 

@@ -5,6 +5,8 @@ export const opensourceEndpoints = {
         bi: {
             endpoint: endpoints.development.api.bi,
             datasetDataApiEndpoint: endpoints.development.api.biData,
+            // self-hosted data-api has no separate embedding endpoint
+            datasetDataEmbedsApiEndpoint: endpoints.development.api.biData,
         },
         biConverter: {
             endpoint: endpoints.development.api.biConverter,
@@ -24,6 +26,8 @@ export const opensourceEndpoints = {
         bi: {
             endpoint: endpoints.production.api.bi,
             datasetDataApiEndpoint: endpoints.production.api.biData,
+            // self-hosted data-api has no separate embedding endpoint
+            datasetDataEmbedsApiEndpoint: endpoints.production.api.biData,
         },
         biConverter: {
             endpoint: endpoints.production.api.biConverter,

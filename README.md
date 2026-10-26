@@ -161,3 +161,23 @@ Password:
 ```
 demo
 ```
+
+## Native ACL and signed embedding
+
+This branch includes the production ACL dialog and embedded dashboard/chart pages.
+The corresponding server implementation lives in `fdsov/datalens-us-acl` (a private
+companion repository); the upstream United Storage image does not supply these APIs.
+Use the matching backend when enabling these features.
+
+Set `EMBED_SERVICE_LOGIN` and `EMBED_SERVICE_PASSWORD` on the UI service to a dedicated
+non-admin DataLens user with read access to the embedded workbooks. The BFF uses its
+session for data requests; viewers authenticate with a signed embed token. Parameters
+signed in the token take precedence over client-supplied filters. Embed pages do not
+attempt to refresh a viewer's nonexistent login session.
+
+Regression tests cover parameter tampering, service-session caching/refresh, expired
+service tokens and failure responses without credential leakage. Run them with:
+
+```sh
+npm run test:jest -- --runInBand src/server/components/embed/service-auth.test.ts src/server/components/charts-engine/controllers/embeds.test.ts
+```

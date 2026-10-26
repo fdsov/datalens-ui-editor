@@ -52,11 +52,13 @@ const sdkConfig: SdkConfig = {
             },
         };
     },
-    decorator: DL.AUTH_ENABLED
-        ? initBeforeRequestDecorator(({scope}) => {
-              return scope === 'auth' ? Promise.resolve() : refreshAuthToken();
-          })
-        : undefined,
+    // See the comment in ui/libs/axios/axios.ts: no session exists on an embedded page.
+    decorator:
+        DL.AUTH_ENABLED && !DL.EMBED
+            ? initBeforeRequestDecorator(({scope}) => {
+                  return scope === 'auth' ? Promise.resolve() : refreshAuthToken();
+              })
+            : undefined,
 };
 
 export type TypedSchema = {

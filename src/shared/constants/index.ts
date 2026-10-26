@@ -8,6 +8,7 @@ export * from './entry';
 export * from './exports';
 export * from './old-schema';
 export * from './header';
+export * from './embed';
 export * from './navigation';
 export * from './timeout';
 export * from './error-codes';

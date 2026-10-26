@@ -1,3 +1,6 @@
+import React from 'react';
+
+import {AclSubjectImpl, AclSubjectSuggestImpl} from 'ui/components/IamAccessDialog/oss-acl-impl';
 import {RangeInputPicker} from 'ui/components/common/RangeInputPicker';
 import type {ShareButtonProps} from 'ui/units/dash/components/ShareButton/ShareButton';
 
@@ -11,8 +14,6 @@ import {Example} from './components/Example/Example';
 import {EXAMPLE_COMPONENT} from './constants/components';
 import type {AccessRightsProps} from './types/components/AccessRights';
 import type {AccessRightsUrlOpenProps} from './types/components/AccessRightsUrlOpen';
-import type {AclSubjectProps} from './types/components/AclSubject';
-import type {AclSubjectSuggestProps} from './types/components/AclSubjectSuggest';
 import type {ActionPanelEntrySelectProps} from './types/components/ActionPanelEntrySelect';
 import type {ButtonFavoriteProps} from './types/components/ButtonFavorite';
 import type {DialogAddParticipantsProps} from './types/components/DialogAddParticipants';
@@ -33,6 +34,18 @@ import type {ReportButtonProps} from './types/components/ReportButton';
 import type {UserAvatarByIdProps} from './types/components/UserAvatarById';
 import type {YfmWrapperProps} from './types/components/YfmWrapper';
 
+// Defer the dialog's store/SDK imports until render to avoid a registry -> DL -> registry cycle.
+const LazyIamAccessDialog = React.lazy(() =>
+    import('ui/components/IamAccessDialog/IamAccessDialogComponent').then((module) => ({
+        default: module.IamAccessDialogComponent,
+    })),
+);
+const RealIamAccessDialogComponent = (props: IamAccessDialogProps) => (
+    <React.Suspense fallback={null}>
+        <LazyIamAccessDialog {...props} />
+    </React.Suspense>
+);
+
 export const commonComponentsMap = {
     [EXAMPLE_COMPONENT]: Example,
     DownloadScreenshot: makeDefaultEmpty<DownloadScreenshotProps>(),
@@ -45,7 +58,7 @@ export const commonComponentsMap = {
     AccessRights: makeDefaultEmpty<AccessRightsProps>(),
     DialogAddParticipants: makeDefaultEmpty<DialogAddParticipantsProps>(),
     AccessRightsUrlOpenComponent: makeDefaultEmpty<AccessRightsUrlOpenProps>(),
-    IamAccessDialogComponent: makeDefaultEmpty<IamAccessDialogProps>(),
+    IamAccessDialogComponent: RealIamAccessDialogComponent,
     UserAvatarById: makeDefaultEmpty<UserAvatarByIdProps>(),
     Datepicker,
     DatepickerControl: makeDefaultEmpty<DatepickerControlProps>(),
@@ -57,8 +70,8 @@ export const commonComponentsMap = {
     MarkupUserInfo: makeDefaultEmpty<MarkupUserInfoProps>(),
     MarkdownControl: makeDefaultEmpty<MarkdownControlProps>(),
     Footer: makeDefaultEmpty(),
-    AclSubject: makeDefaultEmpty<AclSubjectProps>(),
-    AclSubjectSuggest: makeDefaultEmpty<AclSubjectSuggestProps>(),
+    AclSubject: AclSubjectImpl,
+    AclSubjectSuggest: AclSubjectSuggestImpl,
     DialogShare: makeDefaultEmpty<DialogShareProps>(),
     ShareButton: makeDefaultEmpty<ShareButtonProps>(),
     DialogImageWidgetLinkHint: makeDefaultEmpty<DialogImageWidgetLinkHintProps>(),
