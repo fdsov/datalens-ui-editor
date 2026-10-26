@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {Tabs} from '@gravity-ui/uikit';
+import {AdaptiveTabs} from '@gravity-ui/components';
 import block from 'bem-cn-lite';
 import {I18n} from 'i18n';
 import PropTypes from 'prop-types';
@@ -71,7 +71,11 @@ function BasicDocumentation({docs}) {
         <React.Fragment>
             <div className={b('panel')}>
                 <div className={b('tabs')}>
-                    <Tabs items={tabs} activeTab={activeTab} onSelectTab={changeActiveTab} />
+                    <AdaptiveTabs
+                        items={tabs}
+                        activeTab={activeTab}
+                        onSelectTab={changeActiveTab}
+                    />
                 </div>
             </div>
             {activeTab && (
