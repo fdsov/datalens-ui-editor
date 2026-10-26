@@ -57,6 +57,21 @@ Notes:
 - Highcharts (`HC=1`) remains proprietary; for a fully-permissive prod build, migrate charts
   to `@gravity-ui/charts` (Gravity Charts), which this fork's bundle already supports.
 
+## Editor validation
+
+`npm run dev`, `npm run build`, and `npm run test:jest` build the editor library
+bundle automatically. After changing bundled library sources during development,
+run `npm run build:ce-bundle` and restart the server to reload it.
+
+Run the sandbox regression checks with:
+
+```bash
+npm run test:jest -- --selectProjects Server --runInBand --testPathPattern isolated-sandbox
+```
+
+These tests use the real V8 isolate and cover literal configuration values and
+loading the bundled dataset helpers.
+
 ## License & attribution
 
 DataLens is licensed under **Apache-2.0** (see [`LICENSE`](./LICENSE), Copyright YANDEX LLC).
