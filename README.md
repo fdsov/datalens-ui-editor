@@ -56,6 +56,9 @@ Notes:
   git-ignored.
 - Highcharts (`HC=1`) remains proprietary; for a fully-permissive prod build, migrate charts
   to `@gravity-ui/charts` (Gravity Charts), which this fork's bundle already supports.
+- Signed embedded dashboards render text blocks in the browser with the existing sanitized
+  Markdown renderer. They do not require a browser session for text rendering; normal
+  dashboard pages continue to use the authenticated Markdown gateway.
 
 ## Editor validation
 
