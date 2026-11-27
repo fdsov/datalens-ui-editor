@@ -7,14 +7,19 @@ import {Provider} from 'react-redux';
 import {Route, Router} from 'react-router-dom';
 import {applyMiddleware, createStore} from 'redux';
 import thunk from 'redux-thunk';
-import {EntryScope, Feature} from 'shared';
+import {CollectionItemEntities, EntryScope, Feature} from 'shared';
 import {DIALOG_CREATE_ENTRY_IN_WORKBOOK} from 'ui/components/CollectionsStructure';
 import {DIALOG_COPY_ENTRIES_TO_WORKBOOK} from 'ui/components/CopyEntriesToWorkbookDialog';
+import {resetAuthorFilterCache} from 'ui/components/Navigation/Core/AuthorFilterSelect/AuthorFilterSelect';
+import {resetWorkbookFilterCache} from 'ui/components/Navigation/Core/WorkbookFilterSelect/WorkbookFilterSelect';
 import {registerCommonPlugins} from 'ui/registry/units/common/register';
 
 import EntriesNavigationPage from '../EntriesNavigationPage';
 
 const mockGetNavigationList = jest.fn();
+const mockGetStructureItems = jest.fn();
+const mockGetWorkbookEntries = jest.fn();
+const mockGetUsersList = jest.fn();
 const mockAddFavorite = jest.fn();
 const mockDeleteFavorite = jest.fn();
 const mockOpenDialog = jest.fn((payload) => ({type: 'OPEN_DIALOG', payload}));
@@ -38,8 +43,25 @@ jest.mock('ui/libs/schematic-sdk', () => ({
                 getNavigationList: (...args: unknown[]) => mockGetNavigationList(...args),
             },
             us: {
+                getStructureItems: (...args: unknown[]) => mockGetStructureItems(...args),
+                getWorkbookEntries: (...args: unknown[]) => mockGetWorkbookEntries(...args),
                 addFavorite: (...args: unknown[]) => mockAddFavorite(...args),
                 deleteFavorite: (...args: unknown[]) => mockDeleteFavorite(...args),
+            },
+            auth: {
+                getUsersList: (...args: unknown[]) => mockGetUsersList(...args),
+                getUsersByIds: ({subjectIds}: {subjectIds: string[]}) =>
+                    Promise.resolve({
+                        users: subjectIds.map((userId) => ({
+                            userId,
+                            login: userId === 'user-2' ? 'anna_petrova' : 'ivan_kucenko',
+                            email: null,
+                            firstName: null,
+                            lastName: null,
+                            idpSlug: null,
+                            idpType: null,
+                        })),
+                    }),
             },
         },
     }),
@@ -100,6 +122,7 @@ function setupWindowDL() {
         tenantMode: {
             workbooksEnabled: true,
         },
+        isAuthEnabled: true,
     };
 }
 
@@ -125,7 +148,41 @@ function renderPage(initialPath: string) {
             },
             auth: {
                 usersByIds: {
-                    users: {},
+                    users: {
+                        'user-1': {
+                            loading: false,
+                            error: null,
+                            data: {
+                                source: 'user',
+                                subject: {
+                                    userId: 'user-1',
+                                    login: 'ivan_kucenko',
+                                    email: null,
+                                    firstName: 'Ivan',
+                                    lastName: 'Kucenko',
+                                    idpSlug: null,
+                                    idpType: null,
+                                },
+                            },
+                        },
+                        'user-2': {
+                            loading: false,
+                            error: null,
+                            data: {
+                                source: 'user',
+                                subject: {
+                                    userId: 'user-2',
+                                    login: 'anna_petrova',
+                                    email: null,
+                                    firstName: 'Anna',
+                                    lastName: 'Petrova',
+                                    idpSlug: null,
+                                    idpType: null,
+                                },
+                            },
+                        },
+                    },
+                    queue: [],
                 },
             },
         }),
@@ -164,7 +221,62 @@ describe('EntriesNavigationPage', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        resetWorkbookFilterCache();
+        resetAuthorFilterCache();
         setupWindowDL();
+        mockGetUsersList.mockResolvedValue({
+            users: [
+                {
+                    userId: 'user-1',
+                    login: 'ivan_kucenko',
+                    firstName: 'Ivan',
+                    lastName: 'Kucenko',
+                    email: 'ivan@example.com',
+                },
+                {
+                    userId: 'user-2',
+                    login: 'anna_petrova',
+                    firstName: 'Anna',
+                    lastName: 'Petrova',
+                    email: 'anna@example.com',
+                },
+            ],
+        });
+        mockGetStructureItems.mockImplementation(
+            ({collectionId}: {collectionId: string | null}) => {
+                if (collectionId === null) {
+                    return Promise.resolve({
+                        items: [
+                            {
+                                entity: CollectionItemEntities.COLLECTION,
+                                collectionId: 'col1',
+                                title: 'Marketing',
+                            },
+                            {
+                                entity: CollectionItemEntities.WORKBOOK,
+                                workbookId: 'wb2',
+                                title: 'Finance Core',
+                            },
+                        ],
+                    });
+                }
+                if (collectionId === 'col1') {
+                    return Promise.resolve({
+                        items: [
+                            {
+                                entity: CollectionItemEntities.WORKBOOK,
+                                workbookId: 'wb1',
+                                title: 'Media Marketing',
+                            },
+                        ],
+                    });
+                }
+                return Promise.resolve({items: []});
+            },
+        );
+        mockGetWorkbookEntries.mockResolvedValue({
+            entries: [],
+        });
         mockGetNavigationList.mockResolvedValue({
             entries: [sampleDashEntry],
             hasNextPage: false,
@@ -292,5 +404,170 @@ describe('EntriesNavigationPage', () => {
         fireEvent.click(aliasButton!);
 
         expect(await findByText('caption_add')).toBeTruthy();
+    });
+
+    test('filters dashboards by workbook via select, calls getWorkbookEntries and syncs URL query', async () => {
+        mockGetWorkbookEntries.mockResolvedValue({
+            entries: [
+                {
+                    ...sampleDashEntry,
+                    entryId: 'dash-fin-1',
+                    key: 'wb2/Quarterly P&L',
+                    displayKey: 'wb2/Quarterly P&L',
+                    name: undefined,
+                    workbookId: 'wb2',
+                    workbookTitle: undefined,
+                },
+            ],
+        });
+
+        const {findByTestId, findByText, history} = renderPage('/dashboards');
+
+        await findByText('Media - Streamers and SEO');
+
+        const workbookFilter = await findByTestId('navigation-workbook-filter');
+        fireEvent.click(workbookFilter);
+
+        const financeOption = await findByText('Finance Core');
+        fireEvent.click(financeOption);
+
+        expect(await findByText('Quarterly P&L')).toBeTruthy();
+        expect(mockGetWorkbookEntries).toHaveBeenCalledWith(
+            expect.objectContaining({
+                workbookId: 'wb2',
+                scope: EntryScope.Dash,
+                includePermissionsInfo: true,
+            }),
+            expect.any(Object),
+        );
+        expect(history.location.search).toBe('?workbookId=wb2');
+    });
+
+    test('initializes workbook filter from URL query parameter on load', async () => {
+        mockGetWorkbookEntries.mockResolvedValue({
+            entries: [
+                {
+                    ...sampleDashEntry,
+                    entryId: 'dash-fin-2',
+                    key: 'wb2/Revenue Overview',
+                    displayKey: 'wb2/Revenue Overview',
+                    name: undefined,
+                    workbookId: 'wb2',
+                    workbookTitle: undefined,
+                },
+            ],
+        });
+
+        const {findByText} = renderPage('/dashboards?workbookId=wb2');
+
+        expect(await findByText('Revenue Overview')).toBeTruthy();
+        expect(
+            await findByText('Finance Core', {selector: '.g-select-control__option-text'}),
+        ).toBeTruthy();
+        expect(
+            await findByText('Finance Core', {
+                selector: '.dl-core-navigation-table-view__parent-folder-name',
+            }),
+        ).toBeTruthy();
+        expect(mockGetWorkbookEntries).toHaveBeenCalledWith(
+            expect.objectContaining({
+                workbookId: 'wb2',
+                scope: EntryScope.Dash,
+            }),
+            expect.any(Object),
+        );
+    });
+
+    test('filters favorites by selected workbook', async () => {
+        mockGetNavigationList.mockResolvedValue({
+            entries: [
+                {...sampleDashEntry, isFavorite: true},
+                {
+                    ...sampleDashEntry,
+                    entryId: 'dash-fin-fav',
+                    name: 'Finance Favorite',
+                    key: 'wb2/Finance Favorite',
+                    workbookId: 'wb2',
+                    workbookTitle: 'Finance Core',
+                    isFavorite: true,
+                },
+            ],
+            hasNextPage: false,
+            breadCrumbs: [],
+        });
+
+        const {findByTestId, findByText, queryByText} = renderPage('/favorites');
+
+        await findByText('Media - Streamers and SEO');
+        await findByText('Finance Favorite');
+
+        const workbookFilter = await findByTestId('navigation-workbook-filter');
+        fireEvent.click(workbookFilter);
+
+        const financeOption = await findByText('Finance Core', {
+            selector: '.dl-core-navigation-workbook-filter__option-title',
+        });
+        fireEvent.click(financeOption);
+
+        await waitFor(() => {
+            expect(queryByText('Media - Streamers and SEO')).toBeNull();
+        });
+        expect(await findByText('Finance Favorite')).toBeTruthy();
+    });
+
+    test('filters dashboards by author via select, passes createdBy array and syncs URL query', async () => {
+        const {findByTestId, findByText, history} = renderPage('/dashboards');
+
+        await findByText('Media - Streamers and SEO');
+
+        const authorFilter = await findByTestId('navigation-author-filter');
+        fireEvent.click(authorFilter);
+
+        const annaOption = await findByText('anna_petrova');
+        fireEvent.click(annaOption);
+
+        await waitFor(() => {
+            expect(mockGetNavigationList).toHaveBeenLastCalledWith(
+                expect.objectContaining({
+                    createdBy: expect.arrayContaining(['uid:user-2', 'user-2', 'anna_petrova']),
+                }),
+                expect.any(Object),
+            );
+        });
+        expect(history.location.search).toBe('?author=uid%3Auser-2');
+    });
+
+    test('combines workbook and author filters on dashboards', async () => {
+        mockGetWorkbookEntries.mockResolvedValue({
+            entries: [
+                {
+                    ...sampleDashEntry,
+                    entryId: 'dash-ivan',
+                    key: 'wb2/Ivan Report',
+                    displayKey: 'wb2/Ivan Report',
+                    name: undefined,
+                    createdBy: 'uid:user-1',
+                    workbookId: 'wb2',
+                    workbookTitle: undefined,
+                },
+                {
+                    ...sampleDashEntry,
+                    entryId: 'dash-anna',
+                    key: 'wb2/Anna Report',
+                    displayKey: 'wb2/Anna Report',
+                    name: undefined,
+                    createdBy: 'uid:user-2',
+                    workbookId: 'wb2',
+                    workbookTitle: undefined,
+                },
+            ],
+        });
+
+        const {findByText, queryByText} = renderPage(
+            '/dashboards?workbookId=wb2&author=uid:user-2',
+        );
+
+        expect(await findByText('Anna Report')).toBeTruthy();
+        expect(queryByText('Ivan Report')).toBeNull();
     });
 });
