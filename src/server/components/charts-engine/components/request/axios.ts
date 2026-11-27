@@ -1,4 +1,4 @@
-import type {IncomingMessage, OutgoingHttpHeaders} from 'http';
+import type {IncomingHttpHeaders, IncomingMessage, OutgoingHttpHeaders} from 'http';
 import querystring from 'node:querystring';
 
 import type {AppConfig, AppContext} from '@gravity-ui/nodekit';
@@ -26,7 +26,42 @@ type CachedRequestOptions = RequestOptions & {
     uri: string;
     ctx: AppContext;
     spCacheDuration: string | number | null;
+    cacheKeyPrefix?: string;
 };
+
+type CachedResponseEnvelope = {
+    statusCode: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    body: any;
+    headers: IncomingHttpHeaders;
+};
+
+const DURATION_UNITS_SECONDS: Record<string, number> = {
+    s: 1,
+    m: 60,
+    h: 3600,
+    d: 86400,
+};
+
+export function parseCacheDuration(value: string | number | null | undefined): number | null {
+    if (value === null || value === undefined || value === '') {
+        return null;
+    }
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? Math.floor(value) : null;
+    }
+    const trimmed = String(value).trim().toLowerCase();
+    const lastChar = trimmed[trimmed.length - 1];
+    const unit =
+        lastChar && DURATION_UNITS_SECONDS[lastChar] ? DURATION_UNITS_SECONDS[lastChar] : 1;
+    const numericPart =
+        lastChar && DURATION_UNITS_SECONDS[lastChar] ? trimmed.slice(0, -1) : trimmed;
+    if (!numericPart) {
+        return null;
+    }
+    const amount = Number(numericPart);
+    return Number.isFinite(amount) ? Math.floor(amount * unit) : null;
+}
 
 interface RequestInstanceLike {
     abort: () => void;
@@ -235,11 +270,7 @@ export class RequestAxios {
 
                 const onData = dataLengthCheck(requestInstance);
 
-                return new Promise<{
-                    statusCode: number;
-                    body: unknown;
-                    headers: Record<string, unknown>;
-                }>((resolve, reject) => {
+                return new Promise<CachedResponseEnvelope>((resolve, reject) => {
                     stream.on('data', (chunk: Buffer) => {
                         chunks.push(chunk);
                         try {
@@ -267,12 +298,12 @@ export class RequestAxios {
                         const buffer = Buffer.concat(chunks);
                         const body = this.parseResponse(buffer, response.headers);
 
-                        const result = {
+                        const result: CachedResponseEnvelope = {
                             statusCode: response.status,
                             body,
                             headers: normalizeResponseHeaders(
                                 response.headers as Record<string, unknown>,
-                            ),
+                            ) as IncomingHttpHeaders,
                         };
 
                         resolve(result);
@@ -295,11 +326,13 @@ export class RequestAxios {
         requestOptions: CachedRequestOptions;
         dataLengthCheck: (requestInstance: RequestInstanceLike) => (data: Buffer | string) => void;
     }) {
-        const {uri, ctx} = requestOptions;
+        const {uri, ctx, cacheKeyPrefix} = requestOptions;
         let {spCacheDuration, useCaching} = requestOptions;
 
-        const durationTime = Math.floor(Number(spCacheDuration));
-        const removingCondition = spCacheDuration && durationTime < 7;
+        const parsedDuration = parseCacheDuration(spCacheDuration);
+        const durationTime = parsedDuration === null ? NaN : parsedDuration;
+        const removingCondition =
+            spCacheDuration && Number.isFinite(durationTime) && durationTime < 7;
 
         const maxValue = 5184000;
 
@@ -326,16 +359,12 @@ export class RequestAxios {
             }
         }
 
-        let key = `${CACHE_PREFIX}:${hideSensitiveData(uri)}`;
+        const keyPrefix = cacheKeyPrefix ? `${CACHE_PREFIX}:${cacheKeyPrefix}` : CACHE_PREFIX;
+        let key = `${keyPrefix}:${hideSensitiveData(uri)}`;
 
         if (dataHash) {
             key += `:${dataHash}`;
         }
-
-        const debugInfo = {
-            url: key,
-            fromCache: false,
-        };
 
         const sequence = Promise.resolve();
 
@@ -355,9 +384,21 @@ export class RequestAxios {
         const getData = (cacheServiceFailing: boolean) => {
             return this.directRequest({requestOptions, dataLengthCheck})
                 .then((response) => {
-                    if (useCaching && !removingCondition && !cacheServiceFailing) {
+                    const isCacheableStatus =
+                        response.statusCode >= 200 && response.statusCode < 300;
+                    if (
+                        useCaching &&
+                        !removingCondition &&
+                        !cacheServiceFailing &&
+                        isCacheableStatus
+                    ) {
+                        const envelope: CachedResponseEnvelope = {
+                            statusCode: response.statusCode,
+                            body: response.body,
+                            headers: response.headers,
+                        };
                         cacheClient
-                            .set({key, value: response.body, ttl: durationTime})
+                            .set({key, value: envelope, ttl: durationTime})
                             .then(() => {
                                 ctx.log('Cache set', {key, durationTime});
                             })
@@ -368,7 +409,7 @@ export class RequestAxios {
 
                     ctx.log('CACHE_SENDING_VALUE_DIRECTLY', {uri: hideSensitiveData(uri)});
 
-                    return response.body;
+                    return response;
                 })
                 .catch((error) => {
                     if (error.response) {
@@ -402,15 +443,34 @@ export class RequestAxios {
                 if (
                     cacheResponseStatus === CacheClient.OK &&
                     cacheResponse &&
-                    'data' in cacheResponse
+                    'data' in cacheResponse &&
+                    cacheResponse.data !== undefined
                 ) {
-                    debugInfo.fromCache = true;
+                    ctx.log('Cache successfully recovered', {key});
 
-                    ctx.log('Cache successfully recovered');
+                    const cached = cacheResponse.data as CachedResponseEnvelope | unknown;
+                    if (
+                        cached &&
+                        typeof cached === 'object' &&
+                        'statusCode' in cached &&
+                        'body' in cached
+                    ) {
+                        const envelope = cached as CachedResponseEnvelope;
+                        return {
+                            statusCode: envelope.statusCode,
+                            body: envelope.body,
+                            headers: {
+                                ...(envelope.headers || {}),
+                                'x-charts-from-cache': '1',
+                            },
+                        };
+                    }
 
-                    cacheResponse.data.debugInfo = debugInfo;
-
-                    return cacheResponse.data;
+                    return {
+                        statusCode: 200,
+                        body: cached,
+                        headers: {'x-charts-from-cache': '1'},
+                    };
                 } else {
                     if (useCaching) {
                         ctx.log(

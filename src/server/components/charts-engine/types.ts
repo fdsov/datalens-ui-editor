@@ -116,7 +116,7 @@ export type Source<T = string | Record<string, string>> = {
     url: string;
     method?: 'GET' | 'POST';
     headers?: OutgoingHttpHeaders;
-    cache?: string;
+    cache?: string | number | boolean;
     statFormat?: string;
     format?: 'json' | 'form' | 'text' | string;
     middlewareUrl?: MiddlewareUrl;
