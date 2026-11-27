@@ -23,6 +23,7 @@ describe('getIsolatedSandboxChartBuilder', () => {
     test('resolves Editor.getId from config.data.meta.links in Urls tab', async () => {
         const builder = await createBuilder('table_node', {
             meta: JSON.stringify({links: {PG: '9qpuryly00vit'}}),
+            params: 'module.exports = {};',
             url: `module.exports = {
                 sql: {
                     url: '/_bi_connections/' + Editor.getId('PG') + '/dashsql',
@@ -31,7 +32,14 @@ describe('getIsolatedSandboxChartBuilder', () => {
         });
 
         try {
+            await builder.buildShared();
             const hooks = new ProcessorHooks({processorHooks: []});
+            await builder.buildParams({
+                hooks,
+                params: {},
+                usedParams: {},
+                actionParams: {},
+            });
             const result = await builder.buildUrls({
                 hooks,
                 params: {},
@@ -52,9 +60,17 @@ describe('getIsolatedSandboxChartBuilder', () => {
         const hooks = new ProcessorHooks({processorHooks: []});
 
         const tableBuilder = await createBuilder('table_node', {
+            params: 'module.exports = {};',
             config: 'module.exports = {title: "Cohort heatmap", paginator: {enabled: false}};',
         });
         try {
+            await tableBuilder.buildShared();
+            await tableBuilder.buildParams({
+                hooks,
+                params: {},
+                usedParams: {},
+                actionParams: {},
+            });
             const result = await tableBuilder.buildChartConfig({
                 hooks,
                 params: {},
@@ -69,9 +85,17 @@ describe('getIsolatedSandboxChartBuilder', () => {
         }
 
         const d3Builder = await createBuilder('d3_node', {
+            params: 'module.exports = {};',
             config: 'module.exports = {title: "D3 chart"};',
         });
         try {
+            await d3Builder.buildShared();
+            await d3Builder.buildParams({
+                hooks,
+                params: {},
+                usedParams: {},
+                actionParams: {},
+            });
             const result = await d3Builder.buildChartConfig({
                 hooks,
                 params: {},
