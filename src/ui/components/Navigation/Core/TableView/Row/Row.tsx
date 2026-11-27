@@ -40,8 +40,11 @@ const CollectionOrWorkbookItem: React.FC<{
             onClick={(event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                 event.stopPropagation();
                 event.preventDefault();
+                if (event.metaKey || event.ctrlKey) {
+                    window.open(link, '_blank', 'noopener,noreferrer');
+                    return;
+                }
                 history.push(link);
-                window.location.reload();
             }}
         >
             <Icon className={b('folder-inline')} data={icon} size={13} />

@@ -3,10 +3,9 @@ import React from 'react';
 import block from 'bem-cn-lite';
 import {useRouteMatch} from 'react-router-dom';
 
-import {getPlaceParameters} from '../../../components/Navigation/Base/configure';
-import NavigationEntries from '../../../components/Navigation/Core/NavigationEntries';
-import {MODE_FULL, PLACE} from '../../../components/Navigation/constants';
-import navigateHelper from '../../../libs/navigateHelper';
+import NavigationBase from '../../../components/Navigation/Base/NavigationBase';
+import NavigationInline from '../../../components/Navigation/Core/NavigationInline';
+import {PLACE} from '../../../components/Navigation/constants';
 import {getSdk} from '../../../libs/schematic-sdk';
 
 import './EntriesNavigationPage.scss';
@@ -16,24 +15,10 @@ const b = block('dl-entries-navigation-page');
 const ROUTE_TO_PLACE: Record<string, string> = {
     dashboards: PLACE.DASHBOARDS,
     charts: PLACE.WIDGETS,
+    widgets: PLACE.WIDGETS,
     datasets: PLACE.DATASETS,
     connections: PLACE.CONNECTIONS,
     favorites: PLACE.FAVORITES,
-};
-
-const onEntryClick = (entry: {entryId?: string; scope?: string; type?: string; key?: string}) => {
-    if (entry.scope === 'folder') {
-        return;
-    }
-    const link = navigateHelper.redirectUrlSwitcher({
-        entryId: entry.entryId,
-        scope: entry.scope,
-        type: entry.type,
-        key: entry.key,
-    });
-    if (link) {
-        window.location.assign(link);
-    }
 };
 
 const EntriesNavigationPage = () => {
@@ -43,15 +28,15 @@ const EntriesNavigationPage = () => {
 
     return (
         <div className={b()}>
-            <NavigationEntries
+            <NavigationBase
                 key={place}
                 sdk={getSdk()}
-                mode={MODE_FULL}
-                place={place}
+                navConstructor={NavigationInline}
+                root={place}
                 path=""
+                hideSidebar={true}
                 ignoreWorkbookEntries={false}
-                getPlaceParameters={getPlaceParameters}
-                onEntryClick={onEntryClick}
+                isOnlyCollectionsMode={true}
             />
         </div>
     );

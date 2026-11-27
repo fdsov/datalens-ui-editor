@@ -51,8 +51,8 @@ export const CreateEntry: React.FC<CreateEntryProps> = ({
     const withMenu =
         place === PLACE.ROOT ||
         place === PLACE.FAVORITES ||
-        (isEnabledFeature(Feature.ShowCreateEntryWithMenu) && place === PLACE.WIDGETS) ||
-        (isEnabledFeature(Feature.ShowCreateEntryWithMenu) && place === PLACE.WIDGETS);
+        (place === PLACE.WIDGETS &&
+            (isOnlyCollectionsMode || isEnabledFeature(Feature.ShowCreateEntryWithMenu)));
 
     const items = React.useMemo(() => {
         if (!withMenu) {

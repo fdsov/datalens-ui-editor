@@ -1,11 +1,16 @@
 import React from 'react';
 
+import {Copy, CopyArrowRight} from '@gravity-ui/icons';
+import {Icon} from '@gravity-ui/uikit';
 import {I18N} from 'i18n';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import {Link, withRouter} from 'react-router-dom';
 import {ENTRY_TYPES, EntryScope, Feature} from 'shared';
+import {isEditorEntryType} from 'shared/utils/entry';
 import {closeNavigation} from 'store/actions/asideHeader/navigation';
+import {DIALOG_COPY_ENTRIES_TO_WORKBOOK} from 'ui/components/CopyEntriesToWorkbookDialog';
+import {S3_BASED_CONNECTORS} from 'ui/constants/connections';
 import {copyTextWithToast} from 'ui/utils/copyText';
 import {isEnabledFeature} from 'ui/utils/isEnabledFeature';
 import Utils from 'ui/utils/utils';
@@ -28,6 +33,11 @@ import './NavigationBase.scss';
 
 const contextMenuI18n = I18N.keyset('component.entry-context-menu.view');
 
+const WORKBOOK_CONTEXT_MENU_ACTION = {
+    DUPLICATE: 'workbook-duplicate',
+    COPY_TO_WORKBOOK: 'workbook-copy-to-workbook',
+};
+
 const SPA_ENTRIES_TYPES = new Set([
     ...ENTRY_TYPES.wizard,
     ...ENTRY_TYPES.ql,
@@ -43,7 +53,11 @@ const isSPAEntry = (entry) => {
         ...getTopLevelEntryScopes(),
     ];
 
-    return spaEntriesScopes.includes(entry.scope) || SPA_ENTRIES_TYPES.has(entry.type);
+    return (
+        spaEntriesScopes.includes(entry.scope) ||
+        SPA_ENTRIES_TYPES.has(entry.type) ||
+        isEditorEntryType(entry.type)
+    );
 };
 
 const getEntryUrl = (entry, navigationUrl) => {
@@ -150,7 +164,7 @@ class NavigationBase extends React.Component {
     update(response, entryDialog, entry = {}) {
         const {currentPageEntry} = this.props;
         if (response.status === EntryDialogResolveStatus.Success) {
-            this.refNavigation.current.refresh();
+            this.refNavigation.current?.refresh();
             const setEntryKey = registry.common.functions.get('setEntryKey');
             if (this.props.onUpdate) {
                 this.props.onUpdate(response);
@@ -197,7 +211,7 @@ class NavigationBase extends React.Component {
             dialog: EntryDialogName.Rename,
             dialogProps: {
                 entryId: entry.entryId,
-                initName: entry.name,
+                initName: entry.name || Utils.getEntryNameFromKey(entry.key, true),
             },
         });
         this.update(response, EntryDialogName.Rename, entry);
@@ -231,10 +245,22 @@ class NavigationBase extends React.Component {
                 workbookId: entry.workbookId,
                 scope: entry.scope,
                 initDestination: this.getOnActionDestination(entry),
-                initName: Utils.getEntryNameFromKey(entry.key, true),
+                initName: entry.name || Utils.getEntryNameFromKey(entry.key, true),
             },
         });
         this.update(response, EntryDialogName.Copy, entry);
+    }
+    copyEntryToWorkbook(entry) {
+        this.props.openDialog({
+            id: DIALOG_COPY_ENTRIES_TO_WORKBOOK,
+            props: {
+                open: true,
+                entryId: entry.entryId,
+                onClose: () => {
+                    this.props.closeDialog();
+                },
+            },
+        });
     }
     async deleteEntry(entry) {
         const response = await this.refDialogues.current.open({
@@ -342,10 +368,12 @@ class NavigationBase extends React.Component {
                 break;
             }
             case CreateMenuValue.Connection: {
-                // special ignoring of isOnlyCollectionsMode, because
-                // connections creation page doesn't belong to folders or workbooks
-                history.push(`/connections/new${query}`);
-                this.closeNavigation();
+                if (this.props.isOnlyCollectionsMode) {
+                    this.openOnlyCollectionsDialog('connection');
+                } else {
+                    history.push(`/connections/new${query}`);
+                    this.closeNavigation();
+                }
                 break;
             }
             case CreateMenuValue.Dataset: {
@@ -371,6 +399,15 @@ class NavigationBase extends React.Component {
                     this.openOnlyCollectionsDialog('ql');
                 } else {
                     history.push(`/ql${query}`);
+                    this.closeNavigation();
+                }
+                break;
+            }
+            case CreateMenuValue.Script: {
+                if (this.props.isOnlyCollectionsMode) {
+                    this.openOnlyCollectionsDialog('editor');
+                } else {
+                    history.push(`/editor${query}`);
                     this.closeNavigation();
                 }
                 break;
@@ -404,8 +441,12 @@ class NavigationBase extends React.Component {
             case ENTRY_CONTEXT_MENU_ACTION.MOVE: {
                 return this.moveEntry(entry);
             }
-            case ENTRY_CONTEXT_MENU_ACTION.COPY: {
+            case ENTRY_CONTEXT_MENU_ACTION.COPY:
+            case WORKBOOK_CONTEXT_MENU_ACTION.DUPLICATE: {
                 return this.copyEntry(entry);
+            }
+            case WORKBOOK_CONTEXT_MENU_ACTION.COPY_TO_WORKBOOK: {
+                return this.copyEntryToWorkbook(entry);
             }
             case ENTRY_CONTEXT_MENU_ACTION.DELETE: {
                 return this.deleteEntry(entry);
@@ -475,6 +516,43 @@ class NavigationBase extends React.Component {
 
         const getMenuItems = (params) => {
             const items = getEntryContextMenuItems(params);
+            const entry = params?.entry;
+
+            if (entry?.workbookId) {
+                const isFileConnection =
+                    entry.scope === EntryScope.Connection &&
+                    S3_BASED_CONNECTORS.includes(entry.type);
+                const canEdit =
+                    !entry.permissions ||
+                    Boolean(entry.permissions.admin || entry.permissions.edit);
+
+                if (
+                    !isFileConnection &&
+                    canEdit &&
+                    !items.some((item) => item.id === 'duplicate')
+                ) {
+                    items.push({
+                        id: 'duplicate',
+                        action: WORKBOOK_CONTEXT_MENU_ACTION.DUPLICATE,
+                        icon: <Icon size={16} data={Copy} />,
+                        text: contextMenuI18n('value_duplicate'),
+                    });
+                }
+
+                if (
+                    !isFileConnection &&
+                    isEnabledFeature(Feature.CopyEntriesToWorkbook) &&
+                    !items.some((item) => item.id === 'copy')
+                ) {
+                    items.push({
+                        id: 'copy',
+                        action: WORKBOOK_CONTEXT_MENU_ACTION.COPY_TO_WORKBOOK,
+                        icon: <Icon size={16} data={CopyArrowRight} />,
+                        text: contextMenuI18n('value_copy'),
+                    });
+                }
+            }
+
             const menu = getGroupedMenu(items, {
                 type: 'entry',
                 isFlat: isEnabledFeature(Feature.MenuItemsFlatView),

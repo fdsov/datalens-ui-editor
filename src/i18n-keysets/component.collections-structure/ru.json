@@ -30,6 +30,7 @@
   "label_delete-workbooks-for-delete": "Будут удалены воркбуки",
   "label_deploy-denied-title": "Недостаточно прав для создания воркбука",
   "label_description": "Описание",
+  "label_editor": "чарта в Editor",
   "label_empty-collection": "В коллекции пусто или не удалось ничего найти по условиям в фильтрах",
   "label_error-file-type": "Файл должен быть в формате JSON",
   "label_help-import-hint": "Используйте файл с конфигурацией воркбука в формате JSON. Получить такой файл можно при <link>экспорте воркбука</link>.",

@@ -3,6 +3,7 @@ import type React from 'react';
 import {
     ChartColumn,
     CirclesIntersection,
+    CurlyBrackets,
     FolderHouse,
     Folders,
     LayoutCellsLarge,
@@ -162,6 +163,14 @@ export const getCreatableEntriesConfig = memoize(() => {
             icon: QLChart,
             type: 'chart-ql',
             text: i18n('value_create-ql'),
+            place: PLACE.WIDGETS,
+            submenu: 'charts',
+        },
+        {
+            value: CreateMenuValue.Script,
+            icon: CurlyBrackets,
+            type: 'editor',
+            text: i18n('value_create-editor'),
             place: PLACE.WIDGETS,
             submenu: 'charts',
         },

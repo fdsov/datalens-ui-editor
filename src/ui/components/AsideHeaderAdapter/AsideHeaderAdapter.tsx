@@ -45,12 +45,15 @@ import './AsideHeaderAdapter.scss';
 
 const b = block('dl-aside-header');
 const i18n = I18n.keyset('component.aside-header.view');
+const navigationI18n = I18n.keyset('component.navigation.view');
 
 const COLLECTIONS_PATH = '/collections';
 const SERVICE_SETTINGS_PATH = '/settings';
 const CONNECTIONS_PATH = '/connections';
 const DATASETS_PATH = '/datasets';
+const CHARTS_PATH = '/charts';
 const DASHBOARDS_PATH = '/dashboards';
+const FAVORITES_PATH = '/favorites';
 
 const FOOTER_ITEM_DEFAULT_SIZE = 18;
 const PROMO_SITE_DOMAIN = 'https://datalens.ru/opensource';
@@ -180,17 +183,17 @@ export const AsideHeaderAdapter = ({
             },
             {
                 id: 'favorites',
-                title: 'Избранное',
+                title: navigationI18n('switch_favorites'),
                 icon: Star,
                 iconSize: ITEMS_NAVIGATION_DEFAULT_SIZE,
-                current: pathname.startsWith('/favorites'),
+                current: pathname.startsWith(FAVORITES_PATH),
                 itemWrapper: (params, makeItem) => {
-                    return getLinkWrapper(makeItem(params), '/favorites');
+                    return getLinkWrapper(makeItem(params), FAVORITES_PATH);
                 },
             },
             {
                 id: 'connections',
-                title: 'Подключения',
+                title: navigationI18n('switch_connections'),
                 icon: Database,
                 iconSize: ITEMS_NAVIGATION_DEFAULT_SIZE,
                 current: pathname.startsWith(CONNECTIONS_PATH),
@@ -200,7 +203,7 @@ export const AsideHeaderAdapter = ({
             },
             {
                 id: 'datasets',
-                title: 'Датасеты',
+                title: navigationI18n('switch_datasets'),
                 icon: CirclesIntersection,
                 iconSize: ITEMS_NAVIGATION_DEFAULT_SIZE,
                 current: pathname.startsWith(DATASETS_PATH),
@@ -210,17 +213,22 @@ export const AsideHeaderAdapter = ({
             },
             {
                 id: 'charts',
-                title: 'Чарты',
+                title: navigationI18n('switch_widgets'),
                 icon: ChartColumn,
                 iconSize: ITEMS_NAVIGATION_DEFAULT_SIZE,
-                current: pathname.startsWith('/charts'),
+                current:
+                    pathname.startsWith(CHARTS_PATH) ||
+                    pathname.startsWith('/widgets') ||
+                    pathname.startsWith('/wizard') ||
+                    pathname.startsWith('/ql') ||
+                    pathname.startsWith('/editor'),
                 itemWrapper: (params, makeItem) => {
-                    return getLinkWrapper(makeItem(params), '/charts');
+                    return getLinkWrapper(makeItem(params), CHARTS_PATH);
                 },
             },
             {
                 id: 'dashboards',
-                title: 'Дашборды',
+                title: navigationI18n('switch_dashboards'),
                 icon: LayoutCells,
                 iconSize: ITEMS_NAVIGATION_DEFAULT_SIZE,
                 current: pathname.startsWith(DASHBOARDS_PATH),
