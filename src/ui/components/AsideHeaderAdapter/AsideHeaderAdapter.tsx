@@ -7,6 +7,7 @@ import {
     Database,
     Gear,
     LayoutCells,
+    Magnifier,
     Sliders,
     Star,
 } from '@gravity-ui/icons';
@@ -29,6 +30,7 @@ import {isEnabledFeature} from 'ui/utils/isEnabledFeature';
 
 import {setAsideHeaderData, updateAsideHeaderIsCompact} from '../../store/actions/asideHeader';
 import type {AsideHeaderData} from '../../store/typings/asideHeader';
+import {openCommandPalette} from '../CommandPalette/CommandPalette';
 import {UserAvatar} from '../UserMenu/UserAvatar';
 import {UserMenu} from '../UserMenu/UserMenu';
 
@@ -169,6 +171,13 @@ export const AsideHeaderAdapter = ({
 
     const menuItems: MenuItem[] = React.useMemo(
         () => [
+            {
+                id: 'quick-search',
+                title: `${navigationI18n('label_placeholder-search')} (⌘K)`,
+                icon: Magnifier,
+                iconSize: ITEMS_NAVIGATION_DEFAULT_SIZE,
+                onItemClick: openCommandPalette,
+            },
             {
                 id: 'collections',
                 title: i18n('label_collections'),

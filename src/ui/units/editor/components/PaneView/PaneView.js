@@ -1,11 +1,13 @@
 import React from 'react';
 
+import {Code} from '@gravity-ui/icons';
+import {Button, Icon, Tooltip} from '@gravity-ui/uikit';
 import block from 'bem-cn-lite';
 import PropTypes from 'prop-types';
 import {Feature} from 'shared';
 import {isEnabledFeature} from 'ui/utils/isEnabledFeature';
 
-import {MODULE_TYPE, PANE_VIEWS} from '../../constants/common';
+import {EVENT_FORMAT_EDITOR, MODULE_TYPE, PANE_VIEWS} from '../../constants/common';
 import Console from '../../containers/Console/Console';
 import PaneEditorDiff from '../../containers/PaneEditorDiff/PaneEditorDiff';
 import Preview from '../../containers/Preview/Preview';
@@ -14,6 +16,7 @@ import {ButtonDocs} from '../ButtonDocs/ButtonDocs';
 import {ButtonEditorSearch} from '../ButtonEditorSearch/ButtonEditorSearch';
 import Documentation from '../Documentation/Documentation';
 import DragItem from '../DragItem/DragItem';
+import {MetaLinksPicker} from '../MetaLinksPicker/MetaLinksPicker';
 import PaneEditor from '../PaneEditor/PaneEditor';
 import PaneTabs from '../PaneTabs/PaneTabs';
 import {PaneViewSelect} from '../PaneViewSelect/PaneViewSelect';
@@ -121,6 +124,28 @@ const PaneView = ({
                     />
                 )}
                 <div className={b('panel-right-section')}>
+                    {state.isEditorView && tabData?.id === 'meta' && (
+                        <MetaLinksPicker className={b('btn-meta-link')} />
+                    )}
+                    {state.isEditorView && state.show !== SHOW.DIFF && (
+                        <Tooltip content="Форматировать код (Shift+Alt+F)">
+                            <Button
+                                className={b('btn-format')}
+                                view="flat-secondary"
+                                size="s"
+                                onClick={() =>
+                                    window.dispatchEvent(
+                                        new CustomEvent(EVENT_FORMAT_EDITOR, {
+                                            detail: {scriptId: tabData?.id},
+                                        }),
+                                    )
+                                }
+                                qa="editor-format-code-btn"
+                            >
+                                <Icon data={Code} size={ICON_PANE_DEFAULT_SIZE} />
+                            </Button>
+                        </Tooltip>
+                    )}
                     {state.isEditorView && (
                         <ButtonEditorSearch
                             className={b('btn-search')}

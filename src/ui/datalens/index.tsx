@@ -14,6 +14,7 @@ import {EMBEDDED_CHART_PATH, EMBEDDED_DASH_PATH} from 'shared';
 import {isEmbeddedMode, isTvMode} from '../utils/embedded';
 import {reducerRegistry} from '../store';
 import {AsideHeaderAdapter} from 'ui/components/AsideHeaderAdapter/AsideHeaderAdapter';
+import {CommandPalette} from 'ui/components/CommandPalette/CommandPalette';
 import {MobileHeaderComponent} from 'ui/components/MobileHeader/MobileHeaderComponent/MobileHeaderComponent';
 import {DL} from 'ui/constants';
 import {useClearReloadedQuery} from '../units/auth/hooks/useClearReloadedQuery';
@@ -150,6 +151,7 @@ const DatalensPageView = () => {
                 {/*<Route path="/" component={MainPage} />*/}
             </Switch>
             <LocationChange onLocationChanged={locationChangeHandler} />
+            {!isEmbeddedMode() && !isTvMode() && <CommandPalette />}
         </React.Suspense>
     );
 };

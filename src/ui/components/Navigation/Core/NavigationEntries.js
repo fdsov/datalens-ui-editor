@@ -38,6 +38,10 @@ import {
     mergeAuthorOptions,
     resolveSelectedAuthorTokens,
 } from './AuthorFilterSelect/AuthorFilterSelect';
+import {
+    ChartTypeFilterSelect,
+    matchesChartTypeFilter,
+} from './ChartTypeFilterSelect/ChartTypeFilterSelect';
 import ErrorView from './ErrorView/ErrorView';
 import OrderSelect from './OrderSelect/OrderSelect';
 import SearchInput from './SearchInput/SearchInput';
@@ -109,6 +113,9 @@ class NavigationEntries extends React.Component {
         showAuthorFilter: PropTypes.bool,
         initialAuthorIds: PropTypes.arrayOf(PropTypes.string),
         onAuthorFilterChange: PropTypes.func,
+        showChartTypeFilter: PropTypes.bool,
+        initialChartTypes: PropTypes.arrayOf(PropTypes.string),
+        onChartTypeFilterChange: PropTypes.func,
         usersByIds: PropTypes.object,
     };
     static defaultProps = {
@@ -175,6 +182,7 @@ class NavigationEntries extends React.Component {
             selectedAuthorIds: initialAuthorIds,
             authors: [],
             authorsLoading: false,
+            selectedChartTypes: props.initialChartTypes || [],
         };
         this.debounceGetListDirectory = debounce(this.debounceGetListDirectory, 300);
         this.showHidden = Boolean(Utils.restore('dlShowHiddenEntries'));
@@ -380,14 +388,17 @@ class NavigationEntries extends React.Component {
             entries: collected,
         };
     }
-    getFilteredEntries(entries = []) {
+    getFilteredEntries(entries = [], selectedChartTypes = this.state?.selectedChartTypes || []) {
         return entries.filter((entry) => {
             const hideSharedEntry = entry.collectionId && this.props.ignoreSharedEntries;
             const showEntry = !hideSharedEntry && (!entry.hidden || this.showHidden);
+            const matchesChartType =
+                !this.props.showChartTypeFilter ||
+                matchesChartTypeFilter(entry.type, selectedChartTypes);
 
             return this.props.isMobileNavigation
-                ? showEntry && MOBILE_PLACES.includes(entry.scope)
-                : showEntry;
+                ? showEntry && matchesChartType && MOBILE_PLACES.includes(entry.scope)
+                : showEntry && matchesChartType;
         });
     }
     refresh = () => {
@@ -612,7 +623,8 @@ class NavigationEntries extends React.Component {
                 const hasActiveFilter =
                     Boolean(searchValue) ||
                     this.state.selectedWorkbookIds.length > 0 ||
-                    this.state.selectedAuthorIds.length > 0;
+                    this.state.selectedAuthorIds.length > 0 ||
+                    this.state.selectedChartTypes.length > 0;
                 this.setState((prevState) => ({
                     loading: false,
                     entries,
@@ -808,6 +820,15 @@ class NavigationEntries extends React.Component {
         );
     };
 
+    onChangeChartTypeFilter = (selectedChartTypes) => {
+        this.props.onChartTypeFilterChange?.(selectedChartTypes);
+        const filteredEntries = this.getFilteredEntries(this.state.entries, selectedChartTypes);
+        this.setState({
+            selectedChartTypes,
+            filteredEntries,
+        });
+    };
+
     onAllDashboardsFilterClick = () => {
         this.setState(
             {
@@ -894,6 +915,14 @@ class NavigationEntries extends React.Component {
                 </div>
                 {filters && (
                     <div className={b('filters')}>
+                        {this.props.showChartTypeFilter && (
+                            <div className={b('filters-item')}>
+                                <ChartTypeFilterSelect
+                                    value={this.state.selectedChartTypes}
+                                    onChange={this.onChangeChartTypeFilter}
+                                />
+                            </div>
+                        )}
                         {this.props.showWorkbookFilter && (
                             <div className={b('filters-item')}>
                                 <WorkbookFilterSelect

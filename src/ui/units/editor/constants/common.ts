@@ -57,5 +57,6 @@ export const TOASTER_TYPE = {
 export const UNRELEASED_MODULE_MARK = '@saved';
 
 export const EVENT_DRAW_PREVIEW = 'editor-draw-preview';
+export const EVENT_FORMAT_EDITOR = 'editor-format-document';
 
 export const getEmptyTemplateType = () => EDITOR_TYPE.GRAVITY_CHARTS_NODE;
