@@ -1,57 +1,105 @@
 import React from 'react';
 
 import block from 'bem-cn-lite';
-import {useRouteMatch} from 'react-router-dom';
+import {useHistory, useLocation, useRouteMatch} from 'react-router-dom';
 
-import {getPlaceParameters} from '../../../components/Navigation/Base/configure';
-import NavigationEntries from '../../../components/Navigation/Core/NavigationEntries';
-import {MODE_FULL, PLACE} from '../../../components/Navigation/constants';
-import navigateHelper from '../../../libs/navigateHelper';
+import NavigationBase from '../../../components/Navigation/Base/NavigationBase';
+import NavigationInline from '../../../components/Navigation/Core/NavigationInline';
+import {PLACE} from '../../../components/Navigation/constants';
 import {getSdk} from '../../../libs/schematic-sdk';
 
 import './EntriesNavigationPage.scss';
 
 const b = block('dl-entries-navigation-page');
 
+const WORKBOOK_ID_QUERY_PARAM = 'workbookId';
+const AUTHOR_QUERY_PARAM = 'author';
+
 const ROUTE_TO_PLACE: Record<string, string> = {
     dashboards: PLACE.DASHBOARDS,
     charts: PLACE.WIDGETS,
+    widgets: PLACE.WIDGETS,
     datasets: PLACE.DATASETS,
     connections: PLACE.CONNECTIONS,
     favorites: PLACE.FAVORITES,
 };
 
-const onEntryClick = (entry: {entryId?: string; scope?: string; type?: string; key?: string}) => {
-    if (entry.scope === 'folder') {
-        return;
-    }
-    const link = navigateHelper.redirectUrlSwitcher({
-        entryId: entry.entryId,
-        scope: entry.scope,
-        type: entry.type,
-        key: entry.key,
-    });
-    if (link) {
-        window.location.assign(link);
-    }
-};
+function parseListQueryParam(search: string, paramName: string): string[] {
+    const params = new URLSearchParams(search);
+    return params
+        .getAll(paramName)
+        .flatMap((value) => value.split(','))
+        .map((value) => value.trim())
+        .filter(Boolean);
+}
 
 const EntriesNavigationPage = () => {
     const match = useRouteMatch<{place: string}>('/:place');
+    const location = useLocation();
+    const history = useHistory();
     const routeKey = match?.params.place || 'dashboards';
     const place = ROUTE_TO_PLACE[routeKey] || PLACE.DASHBOARDS;
 
+    const initialWorkbookIds = React.useMemo(
+        () => parseListQueryParam(location.search, WORKBOOK_ID_QUERY_PARAM),
+        // Only read initial query when navigating to a new section (key={place} remounts)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [place],
+    );
+
+    const initialAuthorIds = React.useMemo(
+        () => parseListQueryParam(location.search, AUTHOR_QUERY_PARAM),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [place],
+    );
+
+    const updateQueryParam = React.useCallback(
+        (paramName: string, values: string[]) => {
+            const params = new URLSearchParams(history.location.search);
+            params.delete(paramName);
+            if (values.length > 0) {
+                params.set(paramName, values.join(','));
+            }
+            const nextSearch = params.toString();
+            history.replace({
+                pathname: history.location.pathname,
+                search: nextSearch ? `?${nextSearch}` : '',
+            });
+        },
+        [history],
+    );
+
+    const handleWorkbookFilterChange = React.useCallback(
+        (workbookIds: string[]) => {
+            updateQueryParam(WORKBOOK_ID_QUERY_PARAM, workbookIds);
+        },
+        [updateQueryParam],
+    );
+
+    const handleAuthorFilterChange = React.useCallback(
+        (authorIds: string[]) => {
+            updateQueryParam(AUTHOR_QUERY_PARAM, authorIds);
+        },
+        [updateQueryParam],
+    );
+
     return (
         <div className={b()}>
-            <NavigationEntries
+            <NavigationBase
                 key={place}
                 sdk={getSdk()}
-                mode={MODE_FULL}
-                place={place}
+                navConstructor={NavigationInline}
+                root={place}
                 path=""
+                hideSidebar={true}
                 ignoreWorkbookEntries={false}
-                getPlaceParameters={getPlaceParameters}
-                onEntryClick={onEntryClick}
+                isOnlyCollectionsMode={true}
+                showWorkbookFilter={true}
+                initialWorkbookIds={initialWorkbookIds}
+                onWorkbookFilterChange={handleWorkbookFilterChange}
+                showAuthorFilter={true}
+                initialAuthorIds={initialAuthorIds}
+                onAuthorFilterChange={handleAuthorFilterChange}
             />
         </div>
     );

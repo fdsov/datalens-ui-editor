@@ -7,11 +7,12 @@ import debounce from 'lodash/debounce';
 import noop from 'lodash/noop';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
-import {filterUsersIds, makeUserId, normalizeDestination} from 'shared';
+import {filterUsersIds, getEntryNameByKey, makeUserId, normalizeDestination} from 'shared';
 import {showToast} from 'store/actions/toaster';
 import Tabs from 'ui/components/Tabs/Tabs';
 import {DL} from 'ui/constants/common';
 import {getResolveUsersByIdsAction} from 'ui/store/actions/usersByIds';
+import {selectUsersByIds} from 'ui/units/auth/store/selectors/usersByIds';
 import {MOBILE_SIZE} from 'ui/utils/mobile';
 
 import logger from '../../../libs/logger';
@@ -19,13 +20,32 @@ import {getSdk} from '../../../libs/schematic-sdk';
 import Utils from '../../../utils';
 import {EntryContextMenuBase} from '../../EntryContextMenu';
 import {EmptyState} from '../components/EmptyState/EmptyState';
-import {MAP_PLACE_TO_SCOPE, MODE_FULL, MODE_MINIMAL, OWNERSHIP, PLACE} from '../constants';
+import {
+    MAP_PLACE_TO_SCOPE,
+    MODE_FULL,
+    MODE_MINIMAL,
+    ORDER_DIRECTION,
+    ORDER_FIELD,
+    OWNERSHIP,
+    PLACE,
+} from '../constants';
 import {NavigationSettings} from '../settings';
 
+import {
+    AuthorFilterSelect,
+    buildAuthorOptionsFromEntries,
+    fetchAccessibleAuthors,
+    mergeAuthorOptions,
+    resolveSelectedAuthorTokens,
+} from './AuthorFilterSelect/AuthorFilterSelect';
 import ErrorView from './ErrorView/ErrorView';
 import OrderSelect from './OrderSelect/OrderSelect';
 import SearchInput from './SearchInput/SearchInput';
 import {TableView} from './TableView/TableView';
+import {
+    WorkbookFilterSelect,
+    fetchAccessibleWorkbooks,
+} from './WorkbookFilterSelect/WorkbookFilterSelect';
 
 import './NavigationEntries.scss';
 
@@ -81,6 +101,15 @@ class NavigationEntries extends React.Component {
         onPermissionError: PropTypes.func,
 
         renderEmptyStateAction: PropTypes.func,
+
+        showWorkbookFilter: PropTypes.bool,
+        initialWorkbookIds: PropTypes.arrayOf(PropTypes.string),
+        onWorkbookFilterChange: PropTypes.func,
+
+        showAuthorFilter: PropTypes.bool,
+        initialAuthorIds: PropTypes.arrayOf(PropTypes.string),
+        onAuthorFilterChange: PropTypes.func,
+        usersByIds: PropTypes.object,
     };
     static defaultProps = {
         mode: MODE_FULL,
@@ -123,15 +152,29 @@ class NavigationEntries extends React.Component {
         const settings = new NavigationSettings();
         const createdBy = settings.getCreatedBy();
 
+        const initialAuthorIds = props.initialAuthorIds || [];
+        const initialOwnership =
+            initialAuthorIds.length > 0
+                ? OWNERSHIP.ALL
+                : createdBy
+                  ? OWNERSHIP.ONLY_MINE
+                  : OWNERSHIP.ALL;
+
         this.state = {
             settings,
             entries: [],
             filteredEntries: [],
             orderBy: settings.getOrderBy(),
-            ownership: createdBy ? OWNERSHIP.ONLY_MINE : OWNERSHIP.ALL,
+            ownership: initialOwnership,
             currentEntryContextButton: React.createRef(),
             breadCrumbs: [],
             isEmptyFolder: false,
+            selectedWorkbookIds: props.initialWorkbookIds || [],
+            workbooks: [],
+            workbooksLoading: false,
+            selectedAuthorIds: initialAuthorIds,
+            authors: [],
+            authorsLoading: false,
         };
         this.debounceGetListDirectory = debounce(this.debounceGetListDirectory, 300);
         this.showHidden = Boolean(Utils.restore('dlShowHiddenEntries'));
@@ -139,8 +182,14 @@ class NavigationEntries extends React.Component {
     componentDidMount() {
         this._isMounted = true;
         this.getListDirectory();
+        if (this.props.showWorkbookFilter) {
+            this.loadWorkbooks();
+        }
+        if (this.props.showAuthorFilter) {
+            this.loadAuthors();
+        }
     }
-    componentDidUpdate() {
+    componentDidUpdate(prevProps) {
         if (this.state.needUpdate) {
             if (this.props.clearSearchInput) {
                 this.props.clearSearchInput();
@@ -148,11 +197,189 @@ class NavigationEntries extends React.Component {
 
             this.getListDirectory();
         }
+
+        if (
+            this.props.showAuthorFilter &&
+            prevProps.usersByIds !== this.props.usersByIds &&
+            this.state.entries.length > 0
+        ) {
+            const resolvedOptions = buildAuthorOptionsFromEntries(
+                this.state.entries,
+                this.props.usersByIds,
+            );
+            if (resolvedOptions.length > 0) {
+                this.setState((prevState) => ({
+                    authors: mergeAuthorOptions(prevState.authors, resolvedOptions),
+                }));
+            }
+        }
     }
     componentWillUnmount() {
         this._isMounted = false;
     }
     refSearchInput = React.createRef();
+    async loadWorkbooks() {
+        this.setState({workbooksLoading: true});
+        try {
+            const loaded = await fetchAccessibleWorkbooks();
+            if (this._isMounted) {
+                this.setState((prevState) => {
+                    const workbooks = this.mergeWorkbooks(prevState.workbooks, loaded);
+                    const titleById = new Map(workbooks.map((wb) => [wb.workbookId, wb.title]));
+                    const entries = prevState.entries.map((entry) =>
+                        entry.workbookId && !entry.workbookTitle && titleById.has(entry.workbookId)
+                            ? {...entry, workbookTitle: titleById.get(entry.workbookId)}
+                            : entry,
+                    );
+                    const filteredEntries = this.getFilteredEntries(entries);
+
+                    return {
+                        workbooks,
+                        entries,
+                        filteredEntries,
+                        workbooksLoading: false,
+                    };
+                });
+            }
+        } catch (error) {
+            logger.logError('NavigationEntries: loadWorkbooks failed', error);
+            if (this._isMounted) {
+                this.setState({workbooksLoading: false});
+            }
+        }
+    }
+    async loadAuthors() {
+        this.setState({authorsLoading: true});
+        try {
+            const loaded = await fetchAccessibleAuthors();
+            if (this._isMounted) {
+                this.setState((prevState) => ({
+                    authors: mergeAuthorOptions(prevState.authors, loaded),
+                    authorsLoading: false,
+                }));
+            }
+        } catch (error) {
+            logger.logError('NavigationEntries: loadAuthors failed', error);
+            if (this._isMounted) {
+                this.setState({authorsLoading: false});
+            }
+        }
+    }
+    mergeWorkbooks(existing = [], incoming = []) {
+        const byId = new Map();
+        existing.forEach((wb) => {
+            if (wb?.workbookId) {
+                byId.set(wb.workbookId, wb);
+            }
+        });
+        incoming.forEach((wb) => {
+            if (wb?.workbookId) {
+                const prev = byId.get(wb.workbookId);
+                byId.set(wb.workbookId, {
+                    workbookId: wb.workbookId,
+                    title: wb.title || prev?.title || wb.workbookId,
+                    collectionPath: wb.collectionPath || prev?.collectionPath,
+                });
+            }
+        });
+        return Array.from(byId.values()).sort((a, bItem) => a.title.localeCompare(bItem.title));
+    }
+    getWorkbookTitle(workbookId) {
+        const found = this.state.workbooks.find((wb) => wb.workbookId === workbookId);
+        return found?.title || null;
+    }
+    sortEntriesByOrder(entries, orderBy) {
+        if (!orderBy) {
+            return entries;
+        }
+        const direction = orderBy.direction === ORDER_DIRECTION.ASC ? 1 : -1;
+        return [...entries].sort((a, bItem) => {
+            if (orderBy.field === ORDER_FIELD.NAME) {
+                return (a.name || '').localeCompare(bItem.name || '') * direction;
+            }
+            const aTime = new Date(a.createdAt || 0).getTime();
+            const bTime = new Date(bItem.createdAt || 0).getTime();
+            return (aTime - bTime) * direction;
+        });
+    }
+    async fetchAllEntriesForWorkbook({workbookId, targetScope, orderBy, searchValue, onlyMy}) {
+        const collected = [];
+        let page = 0;
+        let hasMore = false;
+        const maxPages = 5;
+
+        do {
+            const response = await getSdk().sdk.us.getWorkbookEntries({
+                workbookId,
+                scope: targetScope,
+                includePermissionsInfo: true,
+                page,
+                pageSize: 200,
+                onlyMy,
+                orderBy,
+                filters: searchValue ? {name: searchValue} : undefined,
+            });
+            const workbookTitle = this.getWorkbookTitle(workbookId);
+            const mapped = (response.entries || []).map((entry) => ({
+                ...entry,
+                name: entry.name || getEntryNameByKey({key: entry.key || entry.displayKey || ''}),
+                workbookTitle: entry.workbookTitle || workbookTitle,
+            }));
+            collected.push(...mapped);
+            hasMore = Boolean(response.nextPageToken);
+            page += 1;
+        } while (hasMore && page < maxPages);
+
+        return collected;
+    }
+    async requestFilteredFavorites({
+        selectedWorkbookIds,
+        selectedAuthorTokens,
+        orderBy,
+        searchValue,
+        pageSize,
+    }) {
+        const selectedWorkbookSet =
+            selectedWorkbookIds.length > 0 ? new Set(selectedWorkbookIds) : null;
+        const selectedAuthorSet =
+            selectedAuthorTokens.length > 0 ? new Set(selectedAuthorTokens) : null;
+        const collected = [];
+        let page = 0;
+        let hasNextPage = false;
+        const maxPages = 10;
+
+        do {
+            const response = await getSdk().sdk.mix.getNavigationList({
+                place: PLACE.FAVORITES,
+                path: normalizeDestination(this.props.path || ''),
+                orderBy,
+                pageSize,
+                page,
+                filters: {
+                    name: searchValue,
+                },
+                ignoreWorkbookEntries: this.props.ignoreWorkbookEntries,
+            });
+            const matched = (response.entries || []).filter((entry) => {
+                const matchesWorkbook =
+                    !selectedWorkbookSet ||
+                    (entry.workbookId && selectedWorkbookSet.has(entry.workbookId));
+                const matchesAuthor =
+                    !selectedAuthorSet ||
+                    (entry.createdBy && selectedAuthorSet.has(entry.createdBy));
+                return matchesWorkbook && matchesAuthor;
+            });
+            collected.push(...matched);
+            hasNextPage = Boolean(response.hasNextPage);
+            page += 1;
+        } while (hasNextPage && page < maxPages);
+
+        return {
+            breadCrumbs: [],
+            hasNextPage: false,
+            entries: collected,
+        };
+    }
     getFilteredEntries(entries = []) {
         return entries.filter((entry) => {
             const hideSharedEntry = entry.collectionId && this.props.ignoreSharedEntries;
@@ -191,10 +418,82 @@ class NavigationEntries extends React.Component {
             this.setState({entries, filteredEntries});
         }
     }
-    requestList({isSearch}) {
+    async requestFilteredWorkbookEntries({
+        selectedWorkbookIds,
+        selectedAuthorTokens,
+        targetScope,
+        page,
+        pageSize,
+        onlyMy,
+        orderBy,
+        searchValue,
+    }) {
+        const hasAuthorFilter = selectedAuthorTokens.length > 0;
+        const selectedAuthorSet = hasAuthorFilter ? new Set(selectedAuthorTokens) : null;
+
+        if (selectedWorkbookIds.length === 1 && !hasAuthorFilter) {
+            const workbookId = selectedWorkbookIds[0];
+            const response = await getSdk().sdk.us.getWorkbookEntries(
+                {
+                    workbookId,
+                    scope: targetScope,
+                    includePermissionsInfo: true,
+                    page,
+                    pageSize,
+                    onlyMy,
+                    orderBy,
+                    filters: searchValue ? {name: searchValue} : undefined,
+                },
+                {concurrentId: 'getNavigationList'},
+            );
+            const workbookTitle = this.getWorkbookTitle(workbookId);
+            const entries = (response.entries || []).map((entry) => ({
+                ...entry,
+                name: entry.name || getEntryNameByKey({key: entry.key || entry.displayKey || ''}),
+                workbookTitle: entry.workbookTitle || workbookTitle,
+            }));
+            return {
+                breadCrumbs: [],
+                hasNextPage: Boolean(response.nextPageToken),
+                entries,
+            };
+        }
+
+        const batches = await Promise.all(
+            selectedWorkbookIds.map((workbookId) =>
+                this.fetchAllEntriesForWorkbook({
+                    workbookId,
+                    targetScope,
+                    orderBy,
+                    searchValue,
+                    onlyMy: hasAuthorFilter ? false : onlyMy,
+                }),
+            ),
+        );
+        const uniqueById = new Map();
+        batches.flat().forEach((entry) => {
+            if (!selectedAuthorSet || (entry.createdBy && selectedAuthorSet.has(entry.createdBy))) {
+                uniqueById.set(entry.entryId, entry);
+            }
+        });
+        return {
+            breadCrumbs: [],
+            hasNextPage: false,
+            entries: this.sortEntriesByOrder(Array.from(uniqueById.values()), orderBy),
+        };
+    }
+    async requestList({isSearch}) {
         const {scope, path = '', place, getPlaceParameters, ignoreWorkbookEntries} = this.props;
-        const {page: currentPage, searchValue, orderBy} = this.state;
+        const {
+            page: currentPage,
+            searchValue,
+            orderBy,
+            selectedWorkbookIds,
+            selectedAuthorIds,
+            authors,
+        } = this.state;
         const placeParameters = getPlaceParameters(place);
+        const pageSize = placeParameters.pageSize || 100;
 
         let page = currentPage === null ? 0 : currentPage + 1;
         if (isSearch) {
@@ -202,17 +501,54 @@ class NavigationEntries extends React.Component {
         }
         this.setState({page});
 
+        const selectedAuthorTokens =
+            selectedAuthorIds.length > 0
+                ? resolveSelectedAuthorTokens(selectedAuthorIds, authors)
+                : [];
+
+        if (
+            place === PLACE.FAVORITES &&
+            (selectedWorkbookIds.length > 0 || selectedAuthorTokens.length > 0)
+        ) {
+            return this.requestFilteredFavorites({
+                selectedWorkbookIds,
+                selectedAuthorTokens,
+                orderBy,
+                searchValue,
+                pageSize,
+            });
+        }
+
+        if (selectedWorkbookIds.length > 0 && place !== PLACE.ROOT) {
+            return this.requestFilteredWorkbookEntries({
+                selectedWorkbookIds,
+                selectedAuthorTokens,
+                targetScope: scope || MAP_PLACE_TO_SCOPE[place],
+                page,
+                pageSize,
+                onlyMy: this.state.ownership === OWNERSHIP.ONLY_MINE,
+                orderBy,
+                searchValue,
+            });
+        }
+
+        let createdByFilter;
+        if (place !== PLACE.ROOT) {
+            if (selectedAuthorTokens.length > 0) {
+                createdByFilter = selectedAuthorTokens;
+            } else if (this.state.ownership === OWNERSHIP.ONLY_MINE) {
+                createdByFilter = [DL.USER_LOGIN, makeUserId(DL.USER_ID)];
+            }
+        }
+
         return getSdk().sdk.mix.getNavigationList(
             {
                 place,
                 scope,
                 path: normalizeDestination(path),
                 orderBy,
-                createdBy:
-                    this.state.ownership === OWNERSHIP.ONLY_MINE && place !== PLACE.ROOT
-                        ? [DL.USER_LOGIN, makeUserId(DL.USER_ID)]
-                        : undefined,
-                pageSize: placeParameters.pageSize || 100,
+                createdBy: createdByFilter,
+                pageSize,
                 page,
                 filters: {
                     name: searchValue,
@@ -263,15 +599,36 @@ class NavigationEntries extends React.Component {
                     ? [...this.state.entries, ...requestEntries]
                     : requestEntries;
             const filteredEntries = this.getFilteredEntries(entries);
+            const entryWorkbooks = requestEntries
+                .filter((entry) => entry.workbookId && entry.workbookTitle)
+                .map((entry) => ({
+                    workbookId: entry.workbookId,
+                    title: entry.workbookTitle,
+                }));
+            const entryAuthors = this.props.showAuthorFilter
+                ? buildAuthorOptionsFromEntries(requestEntries, this.props.usersByIds)
+                : [];
             if (path === this.props.path && place === this.props.place && this._isMounted) {
-                this.setState({
+                const hasActiveFilter =
+                    Boolean(searchValue) ||
+                    this.state.selectedWorkbookIds.length > 0 ||
+                    this.state.selectedAuthorIds.length > 0;
+                this.setState((prevState) => ({
                     loading: false,
                     entries,
                     filteredEntries,
                     hasNextPage,
                     breadCrumbs,
-                    isEmptyFolder: searchValue ? isEmptyFolder : filteredEntries.length === 0,
-                });
+                    workbooks:
+                        entryWorkbooks.length > 0
+                            ? this.mergeWorkbooks(prevState.workbooks, entryWorkbooks)
+                            : prevState.workbooks,
+                    authors:
+                        entryAuthors.length > 0
+                            ? mergeAuthorOptions(prevState.authors, entryAuthors)
+                            : prevState.authors,
+                    isEmptyFolder: hasActiveFilter ? isEmptyFolder : filteredEntries.length === 0,
+                }));
             }
             if (this.refSearchInput.current) {
                 this.refSearchInput.current.focus();
@@ -400,9 +757,48 @@ class NavigationEntries extends React.Component {
             );
         }
 
+        const shouldClearAuthorFilter =
+            ownership === OWNERSHIP.ONLY_MINE && this.state.selectedAuthorIds.length > 0;
+        if (shouldClearAuthorFilter) {
+            this.props.onAuthorFilterChange?.([]);
+        }
+
         this.setState(
             {
                 ownership,
+                ...(shouldClearAuthorFilter ? {selectedAuthorIds: []} : {}),
+                hasNextPage: false,
+                page: null,
+            },
+            () => {
+                this.getListDirectory();
+            },
+        );
+    };
+    onChangeWorkbookFilter = (selectedWorkbookIds) => {
+        this.props.onWorkbookFilterChange?.(selectedWorkbookIds);
+        this.setState(
+            {
+                selectedWorkbookIds,
+                hasNextPage: false,
+                page: null,
+            },
+            () => {
+                this.getListDirectory();
+            },
+        );
+    };
+    onChangeAuthorFilter = (selectedAuthorIds) => {
+        this.props.onAuthorFilterChange?.(selectedAuthorIds);
+        const shouldResetOwnership =
+            selectedAuthorIds.length > 0 && this.state.ownership === OWNERSHIP.ONLY_MINE;
+        if (shouldResetOwnership && this.props.mode !== MODE_MINIMAL) {
+            this.state.settings.setCreatedBy('');
+        }
+        this.setState(
+            {
+                selectedAuthorIds,
+                ...(shouldResetOwnership ? {ownership: OWNERSHIP.ALL} : {}),
                 hasNextPage: false,
                 page: null,
             },
@@ -498,6 +894,26 @@ class NavigationEntries extends React.Component {
                 </div>
                 {filters && (
                     <div className={b('filters')}>
+                        {this.props.showWorkbookFilter && (
+                            <div className={b('filters-item')}>
+                                <WorkbookFilterSelect
+                                    value={this.state.selectedWorkbookIds}
+                                    options={this.state.workbooks}
+                                    loading={this.state.workbooksLoading}
+                                    onChange={this.onChangeWorkbookFilter}
+                                />
+                            </div>
+                        )}
+                        {this.props.showAuthorFilter && (
+                            <div className={b('filters-item')}>
+                                <AuthorFilterSelect
+                                    value={this.state.selectedAuthorIds}
+                                    options={this.state.authors}
+                                    loading={this.state.authorsLoading}
+                                    onChange={this.onChangeAuthorFilter}
+                                />
+                            </div>
+                        )}
                         {filters.order && (
                             <div className={b('filters-item')}>
                                 <OrderSelect
@@ -646,10 +1062,16 @@ class NavigationEntries extends React.Component {
     }
 }
 
+const mapStateToProps = (state) => ({
+    usersByIds: state?.auth?.usersByIds?.users ? selectUsersByIds(state) : {},
+});
+
 const mapDispatchToProps = {
     // need to be wrapped in additional function because the registry function does not have time to register
     resolveUsersByIds: (ids) => getResolveUsersByIdsAction()(ids),
     showToast,
 };
 
-export default connect(null, mapDispatchToProps, null, {forwardRef: true})(NavigationEntries);
+export default connect(mapStateToProps, mapDispatchToProps, null, {forwardRef: true})(
+    NavigationEntries,
+);

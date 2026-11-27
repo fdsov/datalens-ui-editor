@@ -117,7 +117,14 @@ const DatalensPageView = () => {
 
                 <Route
                     exact
-                    path={['/dashboards', '/charts', '/datasets', '/connections', '/favorites']}
+                    path={[
+                        '/dashboards',
+                        '/charts',
+                        '/widgets',
+                        '/datasets',
+                        '/connections',
+                        '/favorites',
+                    ]}
                     component={EntriesNavigationPage}
                 />
 

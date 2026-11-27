@@ -10,6 +10,8 @@
         display: flex;
         flex-direction: column;
         flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
         background-color: var(--g-color-base-background);
     }
 
@@ -17,6 +19,7 @@
         display: flex;
         flex-direction: column;
         flex: 1 1 100%;
+        min-height: 0;
         overflow: hidden;
     }
 
@@ -24,10 +27,13 @@
         flex: 0 0 auto;
         padding: 0 20px 8px;
         display: flex;
+        flex-wrap: wrap;
+        row-gap: 8px;
     }
 
     &__search {
-        flex: 0 1 400px;
+        flex: 1 1 220px;
+        max-width: 340px;
         margin-right: 8px;
     }
 
@@ -45,6 +51,7 @@
 
     &__view {
         flex: 1 1 100%;
+        min-height: 0;
     }
 
     &__table-view {
@@ -68,6 +75,8 @@
     &__filters {
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
+        row-gap: 8px;
         flex-shrink: 0;
     }
 

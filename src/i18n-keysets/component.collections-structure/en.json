@@ -30,6 +30,7 @@
   "label_delete-workbooks-for-delete": "Workbooks to be deleted",
   "label_deploy-denied-title": "Insufficient permissions to create a workbook",
   "label_description": "Description",
+  "label_editor": "Editor chart",
   "label_empty-collection": "This collection is empty or nothing matching the filter conditions was found",
   "label_error-file-type": "File must be in JSON format",
   "label_help-import-hint": "Use a workbook configuration file in JSON format. You can get such a file by <link>exporting the workbook</link>.",

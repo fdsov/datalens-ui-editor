@@ -1,0 +1,42 @@
+@import '~@gravity-ui/uikit/styles/mixins';
+
+.dl-core-navigation-author-filter {
+    width: 210px;
+
+    &__popup {
+        max-width: 320px;
+    }
+
+    &__option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        min-width: 0;
+        padding: 2px 0;
+    }
+
+    &__option-icon {
+        flex: 0 0 auto;
+        color: var(--g-color-text-secondary);
+    }
+
+    &__option-text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    &__option-title {
+        @include overflow-ellipsis();
+        line-height: 18px;
+    }
+
+    &__option-sublabel {
+        @include overflow-ellipsis();
+        font-size: 11px;
+        line-height: 14px;
+        color: var(--g-color-text-secondary);
+    }
+}

@@ -22,7 +22,7 @@ export type ChartEditorType = {
 };
 
 function getMetaTab() {
-    if (isEnabledFeature('EnableChartEditorMetaTab')) {
+    if (isEnabledFeature('EnableChartEditorMetaTab') || isEnabledFeature('EnableChartEditor')) {
         return [
             {
                 name: 'Meta',
