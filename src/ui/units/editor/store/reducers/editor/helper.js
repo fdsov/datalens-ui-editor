@@ -121,9 +121,16 @@ export class Helper {
 
     static formEntryData({scriptsValues, entry}) {
         const entryData = {...scriptsValues};
-        if (entry?.data?.secrets) {
-            entryData.secrets = entry.data.secrets;
-        }
+        const preservedKeys = ['secrets', 'meta', 'shared'];
+
+        preservedKeys.forEach((key) => {
+            if (
+                !Object.prototype.hasOwnProperty.call(entryData, key) &&
+                entry?.data?.[key] !== undefined
+            ) {
+                entryData[key] = entry.data[key];
+            }
+        });
 
         return entryData;
     }

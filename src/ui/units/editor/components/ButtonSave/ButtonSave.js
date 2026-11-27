@@ -21,6 +21,7 @@ import {selectIsRenameWithoutReload} from 'ui/store/selectors/entryContent';
 
 import {SaveChartControlsQa} from '../../../../../shared/constants/qa/components';
 import {ENTRY_ACTION, TOASTER_TYPE, UPDATE_ENTRY_MODE} from '../../constants/common';
+import {Helper} from '../../store/reducers/editor/helper';
 import Dialogs from '../Dialogs/Dialogs';
 
 import iconLock from 'ui/assets/icons/lock.svg';
@@ -70,7 +71,7 @@ function ButtonSave({
             dialog: EntryDialogName.CreateEditorChart,
             dialogProps: {
                 initDestination: Utils.getPathBefore({path: entry.key}),
-                data: scriptsValues,
+                data: Helper.formEntryData({scriptsValues, entry}),
                 type: entry.type,
                 workbookId,
                 initName,
@@ -102,7 +103,7 @@ function ButtonSave({
                     dialog: EntryDialogName.CreateEditorChart,
                     dialogProps: {
                         initDestination: defaultPath,
-                        data: scriptsValues,
+                        data: Helper.formEntryData({scriptsValues, entry}),
                         type: entry.type,
                         workbookId,
                     },

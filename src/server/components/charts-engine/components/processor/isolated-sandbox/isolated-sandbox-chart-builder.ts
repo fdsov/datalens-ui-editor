@@ -271,9 +271,12 @@ export const getIsolatedSandboxChartBuilder = async (
         buildChartConfig: async (options) => {
             const data = options.data as Record<string, unknown> | undefined;
             const configTab = EDITOR_TYPE_CONFIG_TABS[type as keyof typeof EDITOR_TYPE_CONFIG_TABS];
+            const configCode = configTab
+                ? config.data.config || config.data[configTab as keyof typeof config.data] || ''
+                : '';
             const tabResult = await Sandbox.processTab({
                 name: 'Config',
-                code: config.data[configTab as keyof typeof config.data] || '',
+                code: configCode,
                 timeout: ONE_SECOND,
                 hooks: options.hooks,
                 shared,
