@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {ChartLine, TriangleExclamation} from '@gravity-ui/icons';
+import {ArrowsRotateRight, ChartLine, TriangleExclamation} from '@gravity-ui/icons';
 import {ActionTooltip, Button, Icon} from '@gravity-ui/uikit';
 import block from 'bem-cn-lite';
 import get from 'lodash/get';
@@ -16,6 +16,8 @@ import type {GetChartkitMenuByType} from 'ui/registry/units/chart/types/function
 import {chartModelingActions} from 'ui/store/toolkit/chart-modeling/actions';
 import {getChartModelingState, getEditingWidgetId} from 'ui/store/toolkit/chart-modeling/selectors';
 import {selectWorkbookEditPermission} from 'ui/units/workbooks/store/selectors';
+import {markChartNoCacheOnce} from 'ui/utils/cacheRefresh';
+import {isEmbeddedMode} from 'ui/utils/embedded';
 
 import {
     drawComments,
@@ -226,6 +228,25 @@ export const Header = (props: HeaderProps) => {
                         isWidgetMenuDataChanged={isWidgetMenuDataChanged}
                         chartsDataProvider={dataProvider}
                     />
+                )}
+                {!isEmbeddedMode() && canBeShownMenu && reload && (
+                    <div className={b('icons')}>
+                        <ActionTooltip title="Обновить без кэша">
+                            <Button
+                                view="flat-secondary"
+                                size="s"
+                                qa="chart-force-refresh-btn"
+                                onClick={() => {
+                                    markChartNoCacheOnce(
+                                        loadedData?.entryId || dataProps?.id || dataProps?.source,
+                                    );
+                                    reload();
+                                }}
+                            >
+                                <Icon data={ArrowsRotateRight} size={14} />
+                            </Button>
+                        </ActionTooltip>
+                    </div>
                 )}
                 {showFiltersClear && props.canBeDisplayedFilters && (
                     <div className={b('icons')}>

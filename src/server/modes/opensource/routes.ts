@@ -249,6 +249,31 @@ function getChartsRoutes({
             route: 'POST /api/run',
             handler: chartsEngine.controllers.run,
         },
+        postApiCacheInvalidate: {
+            beforeAuth,
+            afterAuth,
+            route: 'POST /api/cache/invalidate',
+            handler: async (req, res) => {
+                const body = (req.body || {}) as {
+                    workbookId?: string;
+                    datasetIds?: string[];
+                    connectionIds?: string[];
+                    flushAll?: boolean;
+                };
+                const result = await chartsEngine.cacheClient.invalidateCache({
+                    workbookId: typeof body.workbookId === 'string' ? body.workbookId : undefined,
+                    datasetIds: Array.isArray(body.datasetIds)
+                        ? body.datasetIds.filter((v): v is string => typeof v === 'string')
+                        : undefined,
+                    connectionIds: Array.isArray(body.connectionIds)
+                        ? body.connectionIds.filter((v): v is string => typeof v === 'string')
+                        : undefined,
+                    flushAll: Boolean(body.flushAll),
+                });
+                req.ctx.log('CACHE_INVALIDATED', result);
+                res.status(200).send({ok: true, ...result});
+            },
+        },
         postApiExport: {
             beforeAuth,
             afterAuth,

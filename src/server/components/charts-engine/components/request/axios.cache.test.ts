@@ -192,5 +192,63 @@ describe('charts-engine RequestAxios caching', () => {
             expect(directSpy).toHaveBeenCalledTimes(3);
             expect(store.size).toBe(2);
         });
+
+        test('forceRefresh bypasses cached read and repopulates cache with fresh response', async () => {
+            const {cache, store} = createMemoryCache();
+            RequestAxios.init({
+                cacheClientInstance: cache,
+                config: {} as AppConfig,
+            });
+
+            const directSpy = jest
+                .spyOn(RequestAxios, 'directRequest')
+                .mockResolvedValueOnce({
+                    statusCode: 200,
+                    body: 'old-ndjson',
+                    headers: {},
+                })
+                .mockResolvedValueOnce({
+                    statusCode: 200,
+                    body: 'fresh-ndjson',
+                    headers: {},
+                });
+
+            const signal = new AbortController().signal;
+            const baseOpts = {
+                method: 'POST',
+                uri: 'http://data-api:8080/api/data/v1/connections/conn1/dashsql',
+                body: {sql_query: 'SELECT now()'},
+                signal,
+                ctx: makeCtx(),
+                spCacheDuration: 3600,
+                cacheKeyPrefix: 'common:wb-1',
+                useCaching: true,
+            };
+
+            const first = await RequestAxios.request({
+                requestOptions: baseOpts,
+                useCaching: true,
+                requestControl: {allBuffersLength: 0},
+            });
+            expect(first.body).toBe('old-ndjson');
+
+            const refreshed = await RequestAxios.request({
+                requestOptions: {...baseOpts, forceRefresh: true},
+                useCaching: true,
+                requestControl: {allBuffersLength: 0},
+            });
+            expect(refreshed.body).toBe('fresh-ndjson');
+            expect(directSpy).toHaveBeenCalledTimes(2);
+            expect(store.size).toBe(1);
+
+            const afterRefresh = await RequestAxios.request({
+                requestOptions: baseOpts,
+                useCaching: true,
+                requestControl: {allBuffersLength: 0},
+            });
+            expect(afterRefresh.body).toBe('fresh-ndjson');
+            expect(afterRefresh.headers['x-charts-from-cache']).toBe('1');
+            expect(directSpy).toHaveBeenCalledTimes(2);
+        });
     });
 });

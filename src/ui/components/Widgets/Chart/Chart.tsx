@@ -11,6 +11,7 @@ import {DL} from 'ui/constants/common';
 import type {ChartKit} from 'ui/libs/DatalensChartkit/ChartKit/ChartKit';
 import {getDataProviderData} from 'ui/libs/DatalensChartkit/components/ChartKitBase/helpers';
 import {CHART_RELOAD_EVENT} from 'ui/units/preview/modules/constants/constants';
+import {FORCE_RELOAD_CHARTS_EVENT} from 'ui/utils/cacheRefresh';
 import {isEmbeddedMode} from 'ui/utils/embedded';
 
 import settings from '../../../libs/DatalensChartkit/modules/settings/settings';
@@ -261,7 +262,13 @@ export const Chart = (props: ChartNoWidgetProps) => {
             };
         }
 
-        return undefined;
+        const onForceReload = () => {
+            reloadChart();
+        };
+        window.addEventListener(FORCE_RELOAD_CHARTS_EVENT, onForceReload);
+        return () => {
+            window.removeEventListener(FORCE_RELOAD_CHARTS_EVENT, onForceReload);
+        };
     }, [reloadChart]);
 
     React.useImperativeHandle<ChartKit | ChartKitRef, ChartWithWrapRefProps>(

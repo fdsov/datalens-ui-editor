@@ -154,8 +154,18 @@ export const runController = (
 
             req.body.key = req.body.key || config.key;
 
+            const subrequestHeaders: Record<string, string> = {
+                ...res.locals.subrequestHeaders,
+            };
+            const noCacheHeader = req.headers['x-dl-no-cache'] || req.headers['x-charts-no-cache'];
+            if (noCacheHeader) {
+                subrequestHeaders['x-dl-no-cache'] = Array.isArray(noCacheHeader)
+                    ? noCacheHeader[0]
+                    : String(noCacheHeader);
+            }
+
             const runnerLocals: RunnerLocals = {
-                subrequestHeaders: res.locals.subrequestHeaders,
+                subrequestHeaders,
                 editMode: Boolean(res.locals.editMode),
                 login: res.locals.login ?? null,
                 iamToken: res.locals.iamToken ?? null,

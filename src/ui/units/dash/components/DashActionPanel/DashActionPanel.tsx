@@ -182,6 +182,7 @@ class DashActionPanel extends React.PureComponent<ActionPanelProps, ActionPanelS
                 onAccessClick={this.openDialogAccess}
                 entryDialoguesRef={this.props.entryDialoguesRef}
                 isWorkbook={Boolean(entry && entry.workbookId)}
+                workbookId={entry?.workbookId || undefined}
                 showOpenedDescription={this.props.showOpenedDescription}
             />
         );
