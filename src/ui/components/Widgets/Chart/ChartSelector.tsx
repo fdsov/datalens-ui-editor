@@ -14,6 +14,7 @@ import type {StringParams} from 'shared';
 import {DashTabItemControlSourceType} from 'shared';
 import {DL} from 'ui/constants/common';
 import {useChangedValue} from 'ui/hooks/useChangedProp';
+import {FORCE_RELOAD_CHARTS_EVENT} from 'ui/utils/cacheRefresh';
 
 import type {ChartKit} from '../../../libs/DatalensChartkit/ChartKit/ChartKit';
 import type {ChartInitialParams} from '../../../libs/DatalensChartkit/components/ChartKitBase/ChartKitBase';
@@ -275,6 +276,18 @@ export const ChartSelector = (props: ChartSelectorWidgetProps) => {
 
         setInitialParams({...loadedData?.defaultParams, ...props.defaults});
     }, [hasCurrentDefaultsChanged, props.defaults, loadedData?.defaultParams]);
+
+    React.useEffect(() => {
+        const onForceReload = () => {
+            if (!skipReload) {
+                loadChartData();
+            }
+        };
+        window.addEventListener(FORCE_RELOAD_CHARTS_EVENT, onForceReload);
+        return () => {
+            window.removeEventListener(FORCE_RELOAD_CHARTS_EVENT, onForceReload);
+        };
+    }, [loadChartData, skipReload]);
 
     React.useImperativeHandle<ChartKit | ChartKitRef, ChartSelectorWithWrapRefProps>(
         forwardedRef,

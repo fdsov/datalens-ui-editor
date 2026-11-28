@@ -31,6 +31,7 @@ import {
     WidgetKind,
 } from 'shared';
 import {DL} from 'ui/constants/common';
+import {consumeChartNoCacheOnce} from 'ui/utils/cacheRefresh';
 import {isEmbeddedEntry} from 'ui/utils/embedded';
 import {isEnabledFeature} from 'ui/utils/isEnabledFeature';
 
@@ -896,13 +897,20 @@ class ChartsDataProvider implements DataProvider<ChartsProps, ChartsData, Cancel
         return responseData;
     }
 
-    private getLoadHeaders(requestId: string, contextHeaders?: DashChartRequestContext) {
+    private getLoadHeaders(
+        requestId: string,
+        contextHeaders?: DashChartRequestContext,
+        noCache?: boolean,
+    ) {
         const headers: Record<string, string | null> = {
             ...(contextHeaders ?? {}),
             [REQUEST_ID_HEADER]: requestId,
         };
         if (isEnabledFeature(Feature.UseComponentHeader)) {
             headers[DL_COMPONENT_HEADER] = DlComponentHeader.UI;
+        }
+        if (noCache) {
+            headers['x-dl-no-cache'] = '1';
         }
 
         return headers;
@@ -997,6 +1005,7 @@ class ChartsDataProvider implements DataProvider<ChartsProps, ChartsData, Cancel
 
         const isEditMode = Boolean(type && configData);
         const includeLogs = this.settings.includeLogs || isEditMode;
+        const noCache = !isEditMode && consumeChartNoCacheOnce(id || source);
 
         const requestOptions = {
             data: {
@@ -1025,7 +1034,7 @@ class ChartsDataProvider implements DataProvider<ChartsProps, ChartsData, Cancel
                 uiOnly: onlyControls || undefined,
                 workbookId,
             },
-            headers: this.getLoadHeaders(requestId, contextHeaders),
+            headers: this.getLoadHeaders(requestId, contextHeaders, noCache),
             'axios-retry': {
                 retries: isEditMode || this.settings.noRetry ? 0 : 1,
             },

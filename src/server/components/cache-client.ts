@@ -11,7 +11,45 @@ export type CacheClientResponse = {
     data?: any;
 };
 
+export type InvalidateCacheOptions = {
+    workbookId?: string;
+    datasetIds?: string[];
+    connectionIds?: string[];
+    flushAll?: boolean;
+};
+
+export type InvalidateCacheResult = {
+    deletedUiKeys: number;
+    deletedDataApiKeys: number;
+};
+
 const REDIS_TIMEOUT = 2000;
+const REDIS_SCAN_TIMEOUT = 5000;
+const MAX_SCAN_ITERATIONS = 500;
+
+const sanitizePatternSegment = (value: string) => value.replace(/[^a-zA-Z0-9_.:/-]/g, '');
+
+async function scanAndUnlink(redisClient: Redis.Redis, pattern: string): Promise<number> {
+    let cursor = '0';
+    let deleted = 0;
+    let iterations = 0;
+
+    do {
+        const [nextCursor, keys] = await timeout(
+            redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', 200),
+            REDIS_SCAN_TIMEOUT,
+        );
+        cursor = nextCursor;
+        iterations += 1;
+
+        if (keys.length > 0) {
+            await timeout(redisClient.unlink(...keys), REDIS_SCAN_TIMEOUT);
+            deleted += keys.length;
+        }
+    } while (cursor !== '0' && iterations < MAX_SCAN_ITERATIONS);
+
+    return deleted;
+}
 
 const timeout = <T>(prom: Promise<T>, time: number): Promise<T> => {
     let timer: NodeJS.Timeout;
@@ -30,6 +68,7 @@ export class CacheClient {
 
     _debug = false;
     client: Redis.Redis | null = null;
+    dataApiClient: Redis.Redis | null = null;
 
     constructor({config}: {config: AppConfig}) {
         this._debug = config.appInstallation === 'development';
@@ -43,6 +82,15 @@ export class CacheClient {
             this.client = new Redis(config.redis);
             this.client.on('error', () => {
                 // Handled gracefully per-request via CacheClient.NOT_OK fallback
+            });
+
+            const dataApiDb = Number(process.env.DATA_API_REDIS_DB || 0);
+            this.dataApiClient = new Redis({
+                ...config.redis,
+                db: dataApiDb,
+            });
+            this.dataApiClient.on('error', () => {
+                // Handled gracefully per-request
             });
         }
     }
@@ -125,6 +173,67 @@ export class CacheClient {
                 message: 'Redis client is null',
             };
         }
+    }
+
+    async invalidateCache(options: InvalidateCacheOptions = {}): Promise<InvalidateCacheResult> {
+        const {workbookId, datasetIds, connectionIds, flushAll} = options;
+        let deletedUiKeys = 0;
+        let deletedDataApiKeys = 0;
+
+        if (this.client) {
+            try {
+                const uiPatterns: string[] = [];
+                if (workbookId) {
+                    const safeWb = sanitizePatternSegment(workbookId);
+                    if (safeWb) {
+                        uiPatterns.push(`sp:*:${safeWb}:*`);
+                    }
+                }
+                if (Array.isArray(connectionIds) && connectionIds.length > 0) {
+                    connectionIds.forEach((id) => {
+                        const safeId = sanitizePatternSegment(id);
+                        if (safeId) {
+                            uiPatterns.push(`sp:*connections/${safeId}/dashsql*`);
+                        }
+                    });
+                }
+                if (flushAll || uiPatterns.length === 0) {
+                    if (!Array.isArray(datasetIds) || datasetIds.length === 0 || flushAll) {
+                        uiPatterns.push('sp:*');
+                    }
+                }
+
+                for (const pattern of uiPatterns) {
+                    deletedUiKeys += await scanAndUnlink(this.client, pattern);
+                }
+            } catch {
+                // Ignore Redis invalidation failures to keep request path resilient
+            }
+        }
+
+        if (this.dataApiClient) {
+            try {
+                const dataApiPatterns: string[] = [];
+                if (Array.isArray(datasetIds) && datasetIds.length > 0) {
+                    datasetIds.forEach((id) => {
+                        const safeId = sanitizePatternSegment(id);
+                        if (safeId) {
+                            dataApiPatterns.push(`bic_dp_ce_l__*${safeId}__*`);
+                        }
+                    });
+                } else if (flushAll || workbookId || !connectionIds || connectionIds.length === 0) {
+                    dataApiPatterns.push('bic_dp_ce_l__*__query_cache//*');
+                }
+
+                for (const pattern of dataApiPatterns) {
+                    deletedDataApiKeys += await scanAndUnlink(this.dataApiClient, pattern);
+                }
+            } catch {
+                // Ignore Redis invalidation failures to keep request path resilient
+            }
+        }
+
+        return {deletedUiKeys, deletedDataApiKeys};
     }
 }
 

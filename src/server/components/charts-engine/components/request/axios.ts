@@ -27,6 +27,7 @@ type CachedRequestOptions = RequestOptions & {
     ctx: AppContext;
     spCacheDuration: string | number | null;
     cacheKeyPrefix?: string;
+    forceRefresh?: boolean;
 };
 
 type CachedResponseEnvelope = {
@@ -326,7 +327,7 @@ export class RequestAxios {
         requestOptions: CachedRequestOptions;
         dataLengthCheck: (requestInstance: RequestInstanceLike) => (data: Buffer | string) => void;
     }) {
-        const {uri, ctx, cacheKeyPrefix} = requestOptions;
+        const {uri, ctx, cacheKeyPrefix, forceRefresh} = requestOptions;
         let {spCacheDuration, useCaching} = requestOptions;
 
         const parsedDuration = parseCacheDuration(spCacheDuration);
@@ -424,11 +425,14 @@ export class RequestAxios {
 
         return sequence
             .then(() => {
-                if (useCaching && spCacheDuration) {
+                if (useCaching && spCacheDuration && !forceRefresh) {
                     ctx.log('Cache getting value...', {key});
 
                     return cacheClient.get({key});
                 } else {
+                    if (forceRefresh) {
+                        ctx.log('Cache force refresh requested, bypassing read', {key});
+                    }
                     return null;
                 }
             })

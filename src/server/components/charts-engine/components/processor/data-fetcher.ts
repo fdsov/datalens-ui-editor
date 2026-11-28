@@ -751,10 +751,10 @@ export class DataFetcher {
         const sourceCache = isExplicitlyDisabledCache
             ? null
             : explicitSourceCache || defaultDashsqlTtl;
-        const bypassCache =
-            isEditMode ||
-            Boolean(subrequestHeaders['x-dl-no-cache'] || subrequestHeaders['x-charts-no-cache']);
-        const useCaching = Boolean(!bypassCache && sourceConfig.useCaching && sourceCache);
+        const forceRefresh = Boolean(
+            subrequestHeaders['x-dl-no-cache'] || subrequestHeaders['x-charts-no-cache'],
+        );
+        const useCaching = Boolean(!isEditMode && sourceConfig.useCaching && sourceCache);
 
         const croppedTargetUri = targetUri.replace('/_' + sourceType, '');
 
@@ -898,6 +898,13 @@ export class DataFetcher {
             requestOptions.maxRedirects = sourceConfig.maxRedirects;
         }
 
+        if (forceRefresh && (sourceType === 'bi_datasets' || sourceType === 'bi_datasets_embed')) {
+            const dsMatch = /\/datasets\/([^/?]+)/.exec(targetUri);
+            if (dsMatch?.[1] && typeof cacheClient?.invalidateCache === 'function') {
+                await cacheClient.invalidateCache({datasetIds: [dsMatch[1]]});
+            }
+        }
+
         if (useCaching) {
             const tenantIdForCache = ctx.get('tenantId') || 'common';
             const scopeKey = workbookId || (isEmbed ? 'embed' : 'global');
@@ -905,6 +912,7 @@ export class DataFetcher {
                 ctx,
                 spCacheDuration: sourceCache,
                 cacheKeyPrefix: `${tenantIdForCache}:${scopeKey}`,
+                forceRefresh,
                 useCaching,
             });
         }
