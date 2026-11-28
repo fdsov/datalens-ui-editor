@@ -83,6 +83,7 @@ type DataFetcherOptions = {
     iamToken?: string | null;
     workbookId?: WorkbookId;
     isEmbed?: boolean;
+    isEditMode?: boolean;
     authParams?: AuthParams | undefined;
     originalReqHeaders: DataFetcherOriginalReqHeaders;
     adapterContext: AdapterContext;
@@ -226,6 +227,7 @@ export class DataFetcher {
         iamToken,
         workbookId,
         isEmbed = false,
+        isEditMode = false,
         authParams,
         originalReqHeaders,
         adapterContext,
@@ -278,6 +280,7 @@ export class DataFetcher {
                               iamToken,
                               workbookId,
                               isEmbed,
+                              isEditMode,
                               authParams,
                               originalReqHeaders:
                                   originalReqHeaders as DataFetcherOriginalReqHeaders,
@@ -510,6 +513,7 @@ export class DataFetcher {
         iamToken,
         workbookId,
         isEmbed,
+        isEditMode = false,
         authParams,
         originalReqHeaders,
         adapterContext,
@@ -530,6 +534,7 @@ export class DataFetcher {
         iamToken?: string | null;
         workbookId?: WorkbookId;
         isEmbed: boolean;
+        isEditMode?: boolean;
         authParams: AuthParams | undefined;
         originalReqHeaders: DataFetcherOriginalReqHeaders;
         adapterContext: AdapterContext;
@@ -621,7 +626,12 @@ export class DataFetcher {
             };
         }
 
-        const sourceCache = source.cache || parsedQuery['_sp_cache_duration'] || null;
+        const explicitSourceCache =
+            source.cache !== undefined ? source.cache : parsedQuery['_sp_cache_duration'];
+        const isExplicitlyDisabledCache =
+            explicitSourceCache === false ||
+            explicitSourceCache === 0 ||
+            explicitSourceCache === '0';
         const sourceStatFormat = source.statFormat || parsedQuery['_sp_stat_format'] || null;
 
         let sourceFormat = source.format;
@@ -674,6 +684,7 @@ export class DataFetcher {
                 iamToken,
                 workbookId,
                 isEmbed,
+                isEditMode,
                 authParams,
                 originalReqHeaders,
                 adapterContext,
@@ -731,7 +742,19 @@ export class DataFetcher {
             }
         }
 
-        const useCaching = Boolean(sourceConfig.useCaching && sourceCache);
+        const defaultDashsqlTtl =
+            (sourceType === 'bi_connections' || sourceType === 'bi_connections_embed') &&
+            targetUri.includes('/dashsql') &&
+            Number(ctx.config.dashsqlCacheDefaultTtl) > 0
+                ? Number(ctx.config.dashsqlCacheDefaultTtl)
+                : null;
+        const sourceCache = isExplicitlyDisabledCache
+            ? null
+            : explicitSourceCache || defaultDashsqlTtl;
+        const bypassCache =
+            isEditMode ||
+            Boolean(subrequestHeaders['x-dl-no-cache'] || subrequestHeaders['x-charts-no-cache']);
+        const useCaching = Boolean(!bypassCache && sourceConfig.useCaching && sourceCache);
 
         const croppedTargetUri = targetUri.replace('/_' + sourceType, '');
 
@@ -876,9 +899,12 @@ export class DataFetcher {
         }
 
         if (useCaching) {
+            const tenantIdForCache = ctx.get('tenantId') || 'common';
+            const scopeKey = workbookId || (isEmbed ? 'embed' : 'global');
             Object.assign(requestOptions, {
                 ctx,
                 spCacheDuration: sourceCache,
+                cacheKeyPrefix: `${tenantIdForCache}:${scopeKey}`,
                 useCaching,
             });
         }

@@ -99,6 +99,7 @@ export interface SharedAppConfig {
     orderedAuthRoles?: `${UserRole}`[];
 
     chartTemplates: Partial<Record<keyof ChartTemplates, unknown>>;
+    dashsqlCacheDefaultTtl?: number;
     redis: RedisConfig | null;
     apiPrefix: string;
     preloadList?: string[];

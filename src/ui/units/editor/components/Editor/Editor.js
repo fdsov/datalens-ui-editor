@@ -4,20 +4,54 @@ import PropTypes from 'prop-types';
 import {useSelector} from 'react-redux';
 import {useSetState} from 'ui';
 
+import {EVENT_FORMAT_EDITOR} from '../../constants/common';
 import {getEditorDefaultOptions} from '../../libs/monaco/options';
 import {MonacoUtils} from '../../libs/monaco/utils';
+import {parseMetaLinks} from '../MetaLinksPicker/MetaLinksPicker';
 import MonacoEditor from '../MonacoEditor/MonacoEditor';
 
 const options = getEditorDefaultOptions();
 
 const Editor = ({id, language, value, onChangeEditor, onModuleClick, highlightRange, size}) => {
     const disposeTypesRef = useRef(null);
+    const disposeMetaCompletionRef = useRef(null);
     const [state, setState] = useSetState({
         editor: null,
         monaco: null,
         decorations: [],
     });
     const revId = useSelector((state) => state.editor?.entry?.revId);
+    const metaScript = useSelector((state) => state.editor?.scriptsValues?.meta);
+    const metaScriptRef = useRef(metaScript);
+    metaScriptRef.current = metaScript;
+
+    useEffect(() => {
+        if (!state.editor) {
+            return undefined;
+        }
+        const onFormatEvent = (event) => {
+            if (event.detail?.scriptId && event.detail.scriptId !== id) {
+                return;
+            }
+            const action = state.editor.getAction('editor.action.formatDocument');
+            if (action) {
+                action.run();
+            }
+        };
+        window.addEventListener(EVENT_FORMAT_EDITOR, onFormatEvent);
+        return () => {
+            window.removeEventListener(EVENT_FORMAT_EDITOR, onFormatEvent);
+        };
+    }, [id, state.editor]);
+
+    useEffect(() => {
+        return () => {
+            if (disposeMetaCompletionRef.current) {
+                disposeMetaCompletionRef.current.dispose();
+                disposeMetaCompletionRef.current = null;
+            }
+        };
+    }, []);
 
     useEffect(() => {
         let decorations = state.decorations;
@@ -45,6 +79,12 @@ const Editor = ({id, language, value, onChangeEditor, onModuleClick, highlightRa
         MonacoUtils.addKeybinds(editor, monaco);
         MonacoUtils.highlightLines(editor, monaco, id);
         MonacoUtils.addActionMakeTabUrl(editor, monaco, id, getRevId);
+        if (disposeMetaCompletionRef.current) {
+            disposeMetaCompletionRef.current.dispose();
+        }
+        disposeMetaCompletionRef.current = MonacoUtils.addMetaLinksCompletion(monaco, () =>
+            parseMetaLinks(metaScriptRef.current),
+        );
         setState({editor, monaco});
     }
 

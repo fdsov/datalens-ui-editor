@@ -14,6 +14,7 @@ const b = block('dl-entries-navigation-page');
 
 const WORKBOOK_ID_QUERY_PARAM = 'workbookId';
 const AUTHOR_QUERY_PARAM = 'author';
+const CHART_TYPE_QUERY_PARAM = 'chartType';
 
 const ROUTE_TO_PLACE: Record<string, string> = {
     dashboards: PLACE.DASHBOARDS,
@@ -53,6 +54,12 @@ const EntriesNavigationPage = () => {
         [place],
     );
 
+    const initialChartTypes = React.useMemo(
+        () => parseListQueryParam(location.search, CHART_TYPE_QUERY_PARAM),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [place],
+    );
+
     const updateQueryParam = React.useCallback(
         (paramName: string, values: string[]) => {
             const params = new URLSearchParams(history.location.search);
@@ -83,6 +90,13 @@ const EntriesNavigationPage = () => {
         [updateQueryParam],
     );
 
+    const handleChartTypeFilterChange = React.useCallback(
+        (chartTypes: string[]) => {
+            updateQueryParam(CHART_TYPE_QUERY_PARAM, chartTypes);
+        },
+        [updateQueryParam],
+    );
+
     return (
         <div className={b()}>
             <NavigationBase
@@ -100,6 +114,9 @@ const EntriesNavigationPage = () => {
                 showAuthorFilter={true}
                 initialAuthorIds={initialAuthorIds}
                 onAuthorFilterChange={handleAuthorFilterChange}
+                showChartTypeFilter={place === PLACE.WIDGETS}
+                initialChartTypes={initialChartTypes}
+                onChartTypeFilterChange={handleChartTypeFilterChange}
             />
         </div>
     );

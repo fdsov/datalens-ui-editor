@@ -34,8 +34,16 @@ export class CacheClient {
     constructor({config}: {config: AppConfig}) {
         this._debug = config.appInstallation === 'development';
 
-        if (config.redis && config.redis.password) {
+        if (
+            config.redis &&
+            (('host' in config.redis && config.redis.host) ||
+                ('sentinels' in config.redis && config.redis.sentinels?.length) ||
+                config.redis.password)
+        ) {
             this.client = new Redis(config.redis);
+            this.client.on('error', () => {
+                // Handled gracefully per-request via CacheClient.NOT_OK fallback
+            });
         }
     }
 

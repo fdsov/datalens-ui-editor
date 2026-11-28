@@ -10,8 +10,9 @@ import {isEnabledFeature} from 'ui/utils/isEnabledFeature';
 
 import {AccessRightsUrlOpen} from '../../../../components/AccessRights/AccessRightsUrlOpen';
 import {registry} from '../../../../registry';
-import {MODULE_TYPE} from '../../constants/common';
+import {EditorUrls, MODULE_TYPE} from '../../constants/common';
 import ButtonSave from '../../containers/ButtonSave/ButtonSave';
+import {getFullPathName} from '../../utils';
 import ButtonDrawPreview from '../ButtonDrawPreview/ButtonDrawPreview';
 import EntryTypeName from '../EntryTypeName/EntryTypeName';
 import {GridSchemeSelect} from '../GridSchemeSelect/GridSchemeSelect';
@@ -72,6 +73,24 @@ function ActionPanelService({
 
     const rightItems = [
         <React.Fragment key="rightItems">
+            {entry.fake && (
+                <Button
+                    className={b('btn-templates')}
+                    view="outlined"
+                    size="m"
+                    onClick={() =>
+                        history.push(
+                            getFullPathName({
+                                base: EditorUrls.NewEntry,
+                                workbookId: workbookId || entry.workbookId,
+                            }),
+                        )
+                    }
+                    qa="editor-templates-btn"
+                >
+                    Шаблоны
+                </Button>
+            )}
             <GridSchemeSelect
                 className={b('grid-scheme-select')}
                 value={schemeId}

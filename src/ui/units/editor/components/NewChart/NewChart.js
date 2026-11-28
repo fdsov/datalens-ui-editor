@@ -3,6 +3,7 @@ import React from 'react';
 import block from 'bem-cn-lite';
 import {i18n} from 'i18n';
 import PropTypes from 'prop-types';
+import {useHistory, useLocation} from 'react-router-dom';
 import {ActionPanel} from 'ui/components/ActionPanel';
 import {DL, URL_QUERY} from 'ui/constants/common';
 
@@ -12,6 +13,8 @@ import './NewChart.scss';
 
 const b = block('new-chart');
 function NewChart({workbookId}) {
+    const history = useHistory();
+    const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
     const searchCurrentPath = searchParams.get(URL_QUERY.CURRENT_PATH);
     let path = searchCurrentPath || DL.USER_FOLDER;

@@ -158,6 +158,45 @@ export class MonacoUtils {
         );
     }
 
+    static addMetaLinksCompletion(monaco, getMetaLinks) {
+        return monaco.languages.registerCompletionItemProvider('javascript', {
+            triggerCharacters: ["'", '"'],
+            provideCompletionItems(model, position) {
+                const linePrefix = model
+                    .getLineContent(position.lineNumber)
+                    .slice(0, position.column - 1);
+                const match =
+                    /(?:ChartEditor|chartEditor|Editor|editor)\.getId\(\s*['"]([^'"]*)$/.exec(
+                        linePrefix,
+                    );
+                if (!match) {
+                    return {suggestions: []};
+                }
+
+                const links = getMetaLinks() || {};
+                const typedPrefix = match[1] || '';
+                const startColumn = position.column - typedPrefix.length;
+                const range = new monaco.Range(
+                    position.lineNumber,
+                    startColumn,
+                    position.lineNumber,
+                    position.column,
+                );
+
+                return {
+                    suggestions: Object.entries(links).map(([alias, entryId]) => ({
+                        label: alias,
+                        kind: monaco.languages.CompletionItemKind.Value,
+                        insertText: alias,
+                        detail: `→ ${entryId}`,
+                        documentation: `Meta link "${alias}" → ${entryId}`,
+                        range,
+                    })),
+                };
+            },
+        });
+    }
+
     static setDefaults(monaco) {
         monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
             ...monaco.languages.typescript.javascriptDefaults.getDiagnosticsOptions(),

@@ -81,6 +81,7 @@ export default {
             bi_connections: {
                 dataEndpoint: sources.bi_connections,
                 passedCredentials: {},
+                useCaching: true,
                 description: {
                     title: {
                         ru: 'DataLens BI Connections',
@@ -111,6 +112,7 @@ export default {
             bi_connections_embed: {
                 dataEndpoint: sources.bi_connections_embed,
                 passedCredentials: {},
+                useCaching: true,
                 description: {
                     title: {
                         ru: 'DataLens BI Connections Embed',
@@ -131,7 +133,18 @@ export default {
         };
     },
 
-    redis: null,
+    dashsqlCacheDefaultTtl: Number(process.env.CHARTS_ENGINE_DASHSQL_CACHE_TTL) || 0,
+
+    redis: process.env.REDIS_HOST
+        ? {
+              host: process.env.REDIS_HOST,
+              port: Number(process.env.REDIS_PORT) || 6379,
+              db: Number(process.env.REDIS_DB) || 1,
+              password: process.env.REDIS_PWD || undefined,
+              maxRetriesPerRequest: 1,
+              enableOfflineQueue: false,
+          }
+        : null,
 
     iamResources: {
         collection: {

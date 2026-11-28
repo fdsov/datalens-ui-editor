@@ -576,6 +576,7 @@ export class Processor {
                     userLogin,
                     workbookId,
                     isEmbed,
+                    isEditMode,
                     authParams,
                     originalReqHeaders,
                     adapterContext,

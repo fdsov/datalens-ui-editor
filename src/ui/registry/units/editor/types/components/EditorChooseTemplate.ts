@@ -1,4 +1,4 @@
 export type EditorChooseTemplateProps = {
-    onClick: (val: string) => void;
-    workbookId: string;
+    onClick?: (val: string) => void;
+    workbookId?: string;
 };

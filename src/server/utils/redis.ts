@@ -11,10 +11,21 @@ export type RedisDsnConfig = {
     password?: string;
 };
 
-export type RedisConfig = RedisDsnConfig & {
-    family: 4 | 6;
-    role: 'master' | 'slave';
+export type RedisSingleHostConfig = {
+    host: string;
+    port?: number;
+    db?: number;
+    password?: string;
+    maxRetriesPerRequest?: number;
+    enableOfflineQueue?: boolean;
 };
+
+export type RedisConfig =
+    | (RedisDsnConfig & {
+          family: 4 | 6;
+          role: 'master' | 'slave';
+      })
+    | RedisSingleHostConfig;
 
 export type RedisConfigParams = {sentinels?: RedisSentinelsList; name?: string; envName?: string};
 
