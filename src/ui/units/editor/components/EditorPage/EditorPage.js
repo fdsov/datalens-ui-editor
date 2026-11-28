@@ -92,7 +92,7 @@ const EditorPage = ({
             setLoading({status: Status.Loading});
 
             if (templatePath) {
-                getEntryItem().then((item) => loadAndSetTemplate(item));
+                getEntryItem().then((item) => loadAndSetTemplate(item || {empty: true}));
             } else {
                 const item = {empty: true};
                 loadAndSetTemplate(item);

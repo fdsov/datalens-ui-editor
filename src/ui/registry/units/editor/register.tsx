@@ -1,6 +1,7 @@
 import {registry} from '../../../registry';
 import {exampleFunction} from '../../../registry/functions/example-function';
 import {EXAMPLE_FUNCTION} from '../../../registry/units/common/constants/functions';
+import {EditorChooseTemplate} from '../../../units/editor/components/EditorChooseTemplate/EditorChooseTemplate';
 import {getEmptyTemplateType} from '../../../units/editor/constants/common';
 import {getEditorTemplates} from '../../../units/editor/constants/templates';
 
@@ -8,7 +9,7 @@ import {EDITOR_CHOOSE_TPL} from './constants/components';
 
 export const registerEditorPlugins = () => {
     registry.editor.components.registerMany({
-        [EDITOR_CHOOSE_TPL]: () => null,
+        [EDITOR_CHOOSE_TPL]: EditorChooseTemplate,
     });
 
     registry.editor.functions.register({
